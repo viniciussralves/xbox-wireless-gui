@@ -80,6 +80,7 @@ class TestDetector(unittest.TestCase):
 class TestXoneValidation(unittest.TestCase):
     def test_pairing_file_rejects(self):
         for bad in (None, "", "/etc/passwd",
+                    "/tmp/pairing",
                     "/sys/bus/usb/drivers/xone-dongle/../x/pairing"):
             self.assertIsNone(xone._valid_pairing_file(bad))
 

@@ -12,16 +12,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: System deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libgtk-4-1 gir1.2-gtk-4.0 \
+            libadwaita-1-0 gir1.2-adw-1 xvfb desktop-file-utils \
+            appstream gettext
+      - name: Python deps
+        run: pip install evdev coverage
       - name: Compile
         run: python3 -m py_compile src/main.py src/backend/*.py tests/*.py
-      - name: Unit tests
-        run: python3 -m unittest discover -s tests -v
+      - name: Unit tests + coverage (>=95% em src/)
+        run: |
+          xvfb-run -a python3 -m coverage run -m unittest discover -s tests -v
+          python3 -m coverage report --fail-under=95 --include="src/*"
       - name: Validate desktop file
+        run: desktop-file-validate data/com.github.xbox-wireless-gui.desktop
+      - name: Validate AppData, schema and policy
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq desktop-file-utils
-          desktop-file-validate data/com.github.xbox-wireless-gui.desktop
-      - name: Validate AppData and schema
-        run: |
-          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('data/com.github.xbox-wireless-gui.metainfo.xml'); print('metainfo XML OK')"
-          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('data/com.github.xbox-wireless-gui.gschema.xml'); print('gschema XML OK')"
-          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('data/org.xboxwireless.gui.policy'); print('policy XML OK')"
+          appstreamcli validate --no-net data/com.github.xbox-wireless-gui.metainfo.xml
+          python3 -c "import xml.dom.minidom; [xml.dom.minidom.parse(f) for f in ['data/com.github.xbox-wireless-gui.metainfo.xml','data/com.github.xbox-wireless-gui.gschema.xml','data/org.xboxwireless.gui.policy']]; print('XML OK')"

@@ -1,0 +1,6 @@
+[run]
+source = src
+branch = false
+
+[report]
+show_missing = true

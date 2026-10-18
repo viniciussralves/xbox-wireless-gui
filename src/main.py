@@ -1276,12 +1276,6 @@ class MainWindow(Adw.ApplicationWindow):
                     items.append({"title": p["name"], "sub": p["path"],
                                   "led": None, "path": p["path"],
                                   "pad_name": p["name"]})
-            # virtual 360: mostra só se não há mais nada (evita duplicar o físico)
-            if not items:
-                for p in virtual_pads:
-                    items.append({"title": f"{p['name']}{_(' (virtual)')}",
-                                  "sub": p["path"], "led": None,
-                                  "path": p["path"], "pad_name": p["name"]})
         else:
             items = []
             for p in real_pads or virtual_pads:
@@ -1436,5 +1430,5 @@ def main() -> int:
     return app.run(sys.argv)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
