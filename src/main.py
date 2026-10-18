@@ -1083,9 +1083,10 @@ class MainWindow(Adw.ApplicationWindow):
         elif res.get("tag"):
             self.upd_row.set_subtitle(_("você já está na última versão"))
             self.toast(_("Você já está na última versão"))
-        else:
-            self.toast(_("Não foi possível verificar ({e})").format(
-                e=res.get("error", "?")))
+        elif res.get("error"):
+            # sem releases publicados ainda ou sem rede: silencioso no auto,
+            # informativo no manual
+            self.toast(_("Nenhum release publicado ainda"))
         return False
 
     def _start_xow_countdown(self):

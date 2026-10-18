@@ -272,9 +272,8 @@ msgstr "you are already on the latest version"
 msgid "Você já está na última versão"
 msgstr "You are already on the latest version"
 
-#, python-brace-format
-msgid "Não foi possível verificar ({e})"
-msgstr "Could not check ({e})"
+msgid "Nenhum release publicado ainda"
+msgstr "No releases published yet"
 
 #, python-brace-format
 msgid "Pareando… {n}s"
