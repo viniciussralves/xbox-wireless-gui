@@ -1,6 +1,5 @@
 """Teste de vibração via evdev (ff-rumble)."""
 from __future__ import annotations
-import glob
 
 from backend.i18n import _
 

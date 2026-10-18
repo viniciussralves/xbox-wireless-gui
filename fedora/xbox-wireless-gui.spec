@@ -9,6 +9,11 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  gettext
 BuildRequires:  python3-evdev
+BuildRequires:  python3-cairo
+BuildRequires:  python3-gobject
+BuildRequires:  gtk4
+BuildRequires:  libadwaita
+BuildRequires:  gobject-introspection
 Requires:       python3-gobject gtk4 libadwaita upower polkit python3-evdev
 Recommends:     evtest joystick
 Recommends:     bluez

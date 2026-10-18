@@ -28,7 +28,7 @@ python3 src/main.py
 - Firmware: detecta `xone_dongle_*.bin`/`xow_dongle.bin` e instala via script oficial (com disclaimer da MS).
 - Permissões: regra udev + grupo `input` com assistente de correção (evita `pkexec` a cada clique).
 - Testador de botões ao vivo, com zona morta configurável e tabela de mapeamento evdev.
-- i18n pt-BR + en, verificação de atualizações no GitHub, testes (`python3 -m unittest discover -s tests`).
+- i18n pt-BR + en, verificação de atualizações no GitHub, testes (`python3 -m unittest discover -s tests`, cobertura 100% em `src/` via `coverage run -m unittest discover -s tests`).
 
 ## Instalar deps (Fedora)
 ```sh

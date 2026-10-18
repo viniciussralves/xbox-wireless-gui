@@ -8,7 +8,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 try:
     import main
-    from backend import prefs as prefs_mod
     HAVE_MAIN = True
 except Exception:  # noqa: BLE001 (CI sem gir)
     HAVE_MAIN = False
@@ -123,7 +122,6 @@ class TestDraw(unittest.TestCase):
             self.skipTest("sem main")
         import cairo
         from backend import inputs
-        from evdev import ecodes
 
         class FakeArea:
             def get_style_context(self):
@@ -160,8 +158,6 @@ class TestTesterWindow(unittest.TestCase):
         import evdev
         self.evdev = evdev
         self.pipes = []
-
-        ecodes = evdev.ecodes
 
         class FakeDev:
             def __init__(self, path, events=()):

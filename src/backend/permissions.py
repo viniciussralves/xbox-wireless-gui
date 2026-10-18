@@ -9,6 +9,7 @@ import glob
 import grp
 import os
 import pwd
+import shlex
 import shutil
 import subprocess
 
@@ -64,7 +65,7 @@ def pairing_writable() -> tuple[bool, list[str]]:
 
 def evdev_readable() -> tuple[bool, str]:
     try:
-        from evdev import InputDevice, list_devices
+        from evdev import InputDevice
         from backend import rumble
         pads = rumble.find_gamepads()
         if not pads:
@@ -127,9 +128,9 @@ def install_fix() -> tuple[bool, str]:
         return False, _("pkexec não encontrado")
     user = _login_user()
     script = (
-        f"install -m644 {src} /etc/udev/rules.d/{RULE_NAME} && "
+        f"install -m644 {shlex.quote(src)} /etc/udev/rules.d/{RULE_NAME} && "
         "udevadm control --reload-rules && udevadm trigger --subsystem-match=leds && "
-        f"usermod -aG input {user} && "
+        f"usermod -aG input {shlex.quote(user)} && "
         "sh -c 'chgrp input /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode "
         "/sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null; "
         "chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode "

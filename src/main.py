@@ -421,7 +421,6 @@ class TesterWindow(Adw.Window):
             self._state["connected"] = True
             # lê posição inicial dos eixos
             try:
-                from evdev import ecodes
                 for code, (lo, hi) in limits.items():
                     try:
                         val = dev.absinfo(code).value
@@ -1387,9 +1386,13 @@ class MainWindow(Adw.ApplicationWindow):
     def vibrate_path(self, path: str):
         dur = self._prefs.get_int("rumble-duration")
         strong, weak = prefs.rumble_magnitudes(self._prefs)
-        ok, msg = rumble.rumble(path, duration_ms=dur,
-                                strong=strong, weak=weak)
-        self.toast(msg)
+
+        def work():
+            ok, msg = rumble.rumble(path, duration_ms=dur,
+                                    strong=strong, weak=weak)
+            GLib.idle_add(self.toast, msg)
+        # rumble dorme ~dur+0.2s: fora da thread da UI para não congelar
+        threading.Thread(target=work, daemon=True).start()
 
     def _on_vibrate_all(self, _b):
         pads = rumble.find_gamepads()
@@ -1399,10 +1402,14 @@ class MainWindow(Adw.ApplicationWindow):
         real = [p for p in pads if "360" not in p.get("name", "")]
         dur = self._prefs.get_int("rumble-duration")
         strong, weak = prefs.rumble_magnitudes(self._prefs)
-        for p in (real or pads):
-            ok, msg = rumble.rumble(p["path"], duration_ms=dur,
-                                    strong=strong, weak=weak)
-            self.toast(f"{p['name']}: {msg}")
+
+        def work():
+            for p in (real or pads):
+                ok, msg = rumble.rumble(p["path"], duration_ms=dur,
+                                        strong=strong, weak=weak)
+                GLib.idle_add(self.toast, f"{p['name']}: {msg}")
+        # fora da thread da UI (cada rumble dorme ~dur+0.2s)
+        threading.Thread(target=work, daemon=True).start()
 
     def _on_open_tester(self, _b):
         self.open_tester(None)

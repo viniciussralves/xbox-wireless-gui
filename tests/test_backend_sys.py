@@ -338,7 +338,6 @@ class TestI18nFull(unittest.TestCase):
 
 class TestUpdatesFull(unittest.TestCase):
     def test_latest(self):
-        import io
         import json
 
         class Resp:

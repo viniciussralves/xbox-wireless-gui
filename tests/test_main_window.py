@@ -211,6 +211,7 @@ class MainWindowCase(unittest.TestCase):
         w = self._win()
         w.on_refresh()
         w.vibrate_path("/dev/p0")
+        pump()
         self.rumble.rumble.assert_called()
         args, kw = self.rumble.rumble.call_args
         self.assertEqual(kw["duration_ms"],

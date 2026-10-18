@@ -126,7 +126,6 @@ class TestGapPermissions(unittest.TestCase):
             self.assertTrue(src.endswith(".rules"))
 
     def test_login_user_variants(self):
-        import pwd
         with mock.patch.dict(os.environ, {"PKEXEC_UID": "1000",
                                           "SUDO_UID": ""}), \
              mock.patch("backend.permissions.pwd.getpwuid",

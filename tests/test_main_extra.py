@@ -1,6 +1,7 @@
 """Casos-limite de main.py (precisa de display)."""
 import os
 import sys
+import time
 import unittest
 from unittest import mock
 
@@ -26,6 +27,16 @@ def have_display():
 
 
 NEEDS_DISPLAY = unittest.skipUnless(have_display(), "sem display")
+
+
+def pump(seconds=0.6):
+    from gi.repository import GLib
+    end = time.time() + seconds
+    ctx = GLib.main_context_default()
+    while time.time() < end:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
 
 
 def ctrl(cid="gip0.0:white:status", mode="1", br="20", mx="50"):
@@ -229,8 +240,11 @@ class ExtraCase(unittest.TestCase):
         w = self._win()
         w.on_refresh()
         w.vibrate_first()
+        pump()
         self.m["r"].rumble.assert_called()
         w._on_vibrate_all(None)
+        pump()
+        self.assertTrue(self.m["r"].rumble.called)
 
     def test_styled_draw(self):
         import cairo
