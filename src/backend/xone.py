@@ -10,6 +10,13 @@ _LED_ID_RE = re.compile(r"^[A-Za-z0-9._:+\-]+$")
 _SYSFS_PAIRING_PREFIX = "/sys/bus/usb/drivers/xone-dongle/"
 _SYSFS_LEDS_PREFIX = "/sys/class/leds/"
 
+# Ações polkit declaradas em data/org.xboxwireless.gui.policy.
+# O backend usa `pkexec sh -c` (ação padrão org.freedesktop.policykit.exec),
+# que funciona sem helper instalado; as ações dedicadas abaixo documentam
+# a intenção e permitem à distro amarrar um helper via anotações exec.*.
+POLKIT_PAIRING_ACTION = "com.github.xbox-wireless-gui.pairing"
+POLKIT_LED_ACTION = "com.github.xbox-wireless-gui.led"
+
 
 def get_pairing_file() -> str | None:
     files = glob.glob("/sys/bus/usb/drivers/xone-dongle/*/pairing")
@@ -41,6 +48,9 @@ def _valid_pairing_file(pf: str | None) -> str | None:
 
 def _run_pkexec_shell(snippet: str) -> subprocess.CompletedProcess:
     # snippet já vem com valores validados/quotados pelo chamador.
+    # Usa a ação padrão org.freedesktop.policykit.exec (sem --action-id:
+    # o pkexec atual não aceita esse flag; ação customizada exigiria
+    # helper com anotações exec.path/argv1). Ver POLKIT_*_ACTION acima.
     return subprocess.run(["pkexec", "sh", "-c", snippet],
                           capture_output=True, text=True, timeout=60)
 

@@ -99,6 +99,13 @@ class ControllerCard(Adw.ExpanderRow):
                 mx = int(info.get("max_brightness") or 5)
             except ValueError:
                 cur, mx = 0, 5
+            cur_mode = str(info.get("mode") or "2")
+            if cur_mode not in ("0", "1", "2"):
+                cur_mode = "2"
+            self.led_mode_list = Gtk.StringList.new(["0", "1", "2"])
+            self.led_mode = Gtk.DropDown(model=self.led_mode_list)
+            self.led_mode.set_selected(("0", "1", "2").index(cur_mode))
+            self.led_mode.set_tooltip_text("Modo do LED (preserva o atual por padrão)")
             self.led_scale = Gtk.Scale.new_with_range(
                 Gtk.Orientation.HORIZONTAL, 0, max(mx, 1), 1)
             self.led_scale.set_value(cur)
@@ -108,11 +115,12 @@ class ControllerCard(Adw.ExpanderRow):
             apply_btn.add_css_class("suggested-action")
             apply_btn.connect("clicked", self._on_led_apply)
             led_box = Gtk.Box(spacing=8)
+            led_box.append(self.led_mode)
             led_box.append(self.led_scale)
             led_box.append(apply_btn)
             led_row = Adw.ActionRow(
                 title="Brilho do LED Xbox",
-                subtitle=f"mode atual: {info.get('mode', '?')} • clique em Aplicar")
+                subtitle=f"mode atual: {info.get('mode', '?')} • ajuste modo + brilho e clique em Aplicar")
             led_row.add_suffix(led_box)
             led_row.set_activatable(False)
             self.add_row(led_row)
@@ -169,7 +177,19 @@ class ControllerCard(Adw.ExpanderRow):
         if not self.led_id:
             return
         val = str(int(self.led_scale.get_value()))
-        ok, msg = xone.set_led(self.led_id, "2", val)
+        try:
+            mode = str(self.led_mode.get_selected())
+        except Exception:  # noqa: BLE001
+            mode = None
+        if mode not in ("0", "1", "2"):
+            # fallback: preserva o mode atual do sysfs em vez de forçar "2"
+            try:
+                cur = next((c for c in xone.list_controllers()
+                            if c["id"] == self.led_id), {}).get("mode")
+                mode = cur if cur in ("0", "1", "2") else "2"
+            except Exception:  # noqa: BLE001
+                mode = "2"
+        ok, msg = xone.set_led(self.led_id, mode, val)
         self._win.toast(msg)
 
     def _on_vibrate(self, _b):
