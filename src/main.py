@@ -22,6 +22,8 @@ levelbar.warn block.filled { background: @warning_bg_color; }
 levelbar.crit block.filled { background: @error_bg_color; }
 .bat-pct { font-weight: 800; }
 .dim { opacity: .75; }
+.btn-std { min-width: 140px; min-height: 34px; border-radius: 9px; }
+.btn-icon { min-width: 34px; min-height: 34px; border-radius: 9px; }
 """
 
 
@@ -106,13 +108,17 @@ class ControllerCard(Adw.ExpanderRow):
             self.led_mode = Gtk.DropDown(model=self.led_mode_list)
             self.led_mode.set_selected(("0", "1", "2").index(cur_mode))
             self.led_mode.set_tooltip_text("Modo do LED (preserva o atual por padrão)")
+            self.led_mode.set_valign(Gtk.Align.CENTER)
             self.led_scale = Gtk.Scale.new_with_range(
                 Gtk.Orientation.HORIZONTAL, 0, max(mx, 1), 1)
             self.led_scale.set_value(cur)
             self.led_scale.set_size_request(180, -1)
+            self.led_scale.set_valign(Gtk.Align.CENTER)
             self.led_scale.set_draw_value(True)
             apply_btn = Gtk.Button(label="Aplicar")
             apply_btn.add_css_class("suggested-action")
+            apply_btn.add_css_class("btn-std")
+            apply_btn.set_valign(Gtk.Align.CENTER)
             apply_btn.connect("clicked", self._on_led_apply)
             led_box = Gtk.Box(spacing=8)
             led_box.append(self.led_mode)
@@ -127,6 +133,8 @@ class ControllerCard(Adw.ExpanderRow):
 
         # --- vibração ---
         vib_btn = Gtk.Button(label="Vibrar", icon_name="audio-volume-high-symbolic")
+        vib_btn.add_css_class("btn-std")
+        vib_btn.set_valign(Gtk.Align.CENTER)
         vib_btn.connect("clicked", self._on_vibrate)
         vib_row = Adw.ActionRow(title="Teste de vibração",
                                 subtitle="envia rumble de ~600ms via evdev")
@@ -138,6 +146,8 @@ class ControllerCard(Adw.ExpanderRow):
         # --- testador de botões (desenho do controle) ---
         test_btn = Gtk.Button(label="Testar botões")
         test_btn.add_css_class("pill")
+        test_btn.add_css_class("btn-std")
+        test_btn.set_valign(Gtk.Align.CENTER)
         test_btn.connect("clicked", self._on_test_buttons)
         test_row = Adw.ActionRow(title="Testador de botões",
                                  subtitle="abre o desenho do controle ao vivo")
@@ -231,6 +241,9 @@ class TesterWindow(Adw.Window):
         self.area.set_content_width(520)
         self.area.set_content_height(360)
         self.area.set_hexpand(True)
+        self.area.set_vexpand(False)
+        self.area.set_halign(Gtk.Align.CENTER)
+        self.area.set_valign(Gtk.Align.CENTER)
         self.area.set_draw_func(self._draw, None)
 
         self.status_label = Gtk.Label(label="Nenhum botão pressionado")
@@ -418,13 +431,15 @@ class TesterWindow(Adw.Window):
             FR, FG, FB = 0.55, 0.55, 0.57
         THIN, BOLD = 1.6, 3.2
         ON = (0.19, 0.82, 0.35)  # verde do botão acionado
+        # padrão único: retangular, borda arredondada, simétrico
+        BTN_W, BTN_H, BTN_R = 44, 32, 8
 
         scale = min(w / 520.0, h / 360.0)
         cr.save()
         cr.translate((w - 520 * scale) / 2.0, (h - 360 * scale) / 2.0)
         cr.scale(scale, scale)
-        cr.set_line_cap(0)  # square
-        cr.set_line_join(0)  # miter
+        cr.set_line_cap(1)  # round
+        cr.set_line_join(1)  # round
 
         def stroke(on: bool = False):
             if on:
@@ -453,72 +468,87 @@ class TesterWindow(Adw.Window):
             cr.move_to(x - ext.width / 2 - ext.x_bearing, y + ext.height / 2)
             cr.show_text(label)
 
-        def square(x, y, a, label, active, size=14):
-            """Botão quadrado com letra; ativo ganha anel interno verde."""
+        def rrect(x, y, w_, h_, r):
+            """Retângulo padrão com borda arredondada."""
+            r = min(r, w_ / 2.0, h_ / 2.0)
+            cr.new_path()
+            cr.move_to(x + r, y)
+            cr.line_to(x + w_ - r, y)
+            cr.arc(x + w_ - r, y + r, r, -math.pi / 2, 0)
+            cr.line_to(x + w_, y + h_ - r)
+            cr.arc(x + w_ - r, y + h_ - r, r, 0, math.pi / 2)
+            cr.line_to(x + r, y + h_)
+            cr.arc(x + r, y + h_ - r, r, math.pi / 2, math.pi)
+            cr.line_to(x, y + r)
+            cr.arc(x + r, y + r, r, math.pi, math.pi * 1.5)
+            cr.close_path()
+
+        def rbutton(x, y, w_=None, h_=None, label="", active=False, size=12):
+            """Botão retangular padrão; ativo ganha anel interno verde."""
+            w_ = BTN_W if w_ is None else w_
+            h_ = BTN_H if h_ is None else h_
             cr.new_path()
             cr.set_line_width(BOLD if active else THIN)
-            cr.rectangle(x, y, a, a)
+            rrect(x, y, w_, h_, BTN_R)
             stroke(active)
             if active:
-                cr.new_path()
                 cr.set_line_width(1.2)
-                cr.rectangle(x + 5, y + 5, a - 10, a - 10)
+                rrect(x + 4, y + 4, w_ - 8, h_ - 8, max(BTN_R - 3, 2))
                 stroke(True)
-            text(x + a / 2, y + a / 2 + 0.5, label, size, active)
+            text(x + w_ / 2, y + h_ / 2 + 0.5, label, size, active)
 
-        # ---- LT / RT (barras) ----
+        # ---- LT / RT (barras arredondadas, simétricas) ----
         for i, (key, x) in enumerate((("lt", 40), ("rt", 370))):
             v = s["lt"] if key == "lt" else s["rt"]
             on = v > 0.05
             cr.new_path()
             cr.set_line_width(BOLD if on else THIN)
-            cr.rectangle(x, 26, 110, 10)
+            rrect(x, 26, 110, 14, 7)
             stroke(on)
             if v > 0.01:
                 cr.new_path()
                 cr.set_line_width(2.0)
-                cr.move_to(x + 4, 31)
-                cr.line_to(x + 4 + 102 * v, 31)
+                cr.move_to(x + 6, 33)
+                cr.line_to(x + 6 + 98 * v, 33)
                 stroke(True)
             text(x + 55, 14, f"LT {s['lt']:.0%}" if i == 0 else f"RT {s['rt']:.0%}", 11, on)
 
-        # ---- LB / View / Xbox / Menu / RB ----
-        square(60, 58, 46, "LB", s["lb"], 12)
-        square(414, 58, 46, "RB", s["rb"], 12)
-        # Xbox: quadrado + X
+        # ---- LB / View / Xbox / Menu / RB (padrão 44x32, simétricos) ----
+        rbutton(60, 58, label="LB", active=s["lb"])
+        rbutton(416, 58, label="RB", active=s["rb"])
+        # Xbox: retangular + X centralizado
         cr.new_path()
         cr.set_line_width(BOLD if s["xbox"] else THIN)
-        cr.rectangle(241, 58, 46, 46)
+        rrect(238, 58, BTN_W, BTN_H, BTN_R)
         stroke(s["xbox"])
-        for x1, y1, x2, y2 in ((251, 68, 277, 94), (277, 68, 251, 94)):
+        for x1, y1, x2, y2 in ((249, 66, 271, 82), (271, 66, 249, 82)):
             cr.new_path()
             cr.set_line_width(BOLD if s["xbox"] else THIN)
             cr.move_to(x1, y1)
             cr.line_to(x2, y2)
             stroke(s["xbox"])
-        # View: quadrado + dois quadradinhos
+        # View: retangular + dois quadradinhos
         cr.new_path()
         cr.set_line_width(BOLD if s["back"] else THIN)
-        cr.rectangle(180, 62, 38, 38)
+        rrect(172, 62, BTN_W, BTN_H, BTN_R)
         stroke(s["back"])
-        for qx, qy in ((190, 72), (194, 76)):
-            cr.new_path()
+        for qx, qy in ((187, 71), (191, 75)):
             cr.set_line_width(1.2)
-            cr.rectangle(qx, qy, 8, 8)
+            rrect(qx, qy, 7, 7, 2)
             stroke(s["back"])
-        # Menu: quadrado + hambúrguer
+        # Menu: retangular + hambúrguer
         cr.new_path()
         cr.set_line_width(BOLD if s["start"] else THIN)
-        cr.rectangle(302, 62, 38, 38)
+        rrect(304, 62, BTN_W, BTN_H, BTN_R)
         stroke(s["start"])
-        for yy in (74, 81, 88):
+        for yy in (71, 78, 85):
             cr.new_path()
             cr.set_line_width(1.4)
-            cr.move_to(310, yy)
-            cr.line_to(332, yy)
+            cr.move_to(314, yy)
+            cr.line_to(336, yy)
             stroke(s["start"])
 
-        # ---- analógicos: poço quadrado + botão quadrado ----
+        # ---- analógicos: poço + botão retangular padrão ----
         for key, wx, wy, ax, ay in (("l3", 40, 118, "lx", "ly"),
                                      ("r3", 200, 225, "rx", "ry")):
             on = bool(s[key])
@@ -538,32 +568,32 @@ class TesterWindow(Adw.Window):
             ky = cy + s[ay] * 24
             cr.new_path()
             cr.set_line_width(2.2 if on else THIN)
-            cr.rectangle(kx - 19, ky - 19, 38, 38)
+            rrect(kx - 20, ky - 16, 40, 32, 8)
             stroke(on)
 
-        # ---- D-Pad: cruz de quadrados ----
-        dx, dy, q, g = 74, 280, 32, 4
-        for ox, oy, hv in ((0, -(q + g), (0, -1)),
-                           (0, q + g, (0, 1)),
-                           (-(q + g), 0, (-1, 0)),
-                           (q + g, 0, (1, 0)),
+        # ---- D-Pad: cruz de retangulares padrão ----
+        dx, dy, g = 74, 282, 6
+        for ox, oy, hv in ((0, -(BTN_H + g), (0, -1)),
+                           (0, BTN_H + g, (0, 1)),
+                           (-(BTN_W + g), 0, (-1, 0)),
+                           (BTN_W + g, 0, (1, 0)),
                            (0, 0, None)):
             hx, hy = s.get("hat", (0, 0))
             on = (hx, hy) == hv if hv else False
             cr.new_path()
             cr.set_line_width(BOLD if on else THIN)
-            cr.rectangle(dx + ox, dy + oy, q, q)
+            rrect(dx + ox, dy + oy, BTN_W, BTN_H, BTN_R)
             stroke(on)
         cr.new_path()  # miolo
         cr.set_source_rgb(FR, FG, FB)
-        cr.rectangle(dx + q / 2 - 2, dy + q / 2 - 2, 4, 4)
+        cr.rectangle(dx + BTN_W / 2 - 2, dy + BTN_H / 2 - 2, 4, 4)
         cr.fill()
 
-        # ---- ABXY: losango de quadrados ----
-        square(427, 128, 38, "Y", s["y"])
-        square(385, 170, 38, "X", s["x"])
-        square(469, 170, 38, "B", s["b"])
-        square(427, 212, 38, "A", s["a"])
+        # ---- ABXY: losango de retangulares padrão ----
+        rbutton(405, 124, label="Y", active=s["y"])
+        rbutton(363, 166, label="X", active=s["x"])
+        rbutton(447, 166, label="B", active=s["b"])
+        rbutton(405, 208, label="A", active=s["a"])
 
         # ---- Share (pílula + seta; decorativo: xone não expõe o botão) ----
         cr.new_path()
@@ -608,6 +638,8 @@ class MainWindow(Adw.ApplicationWindow):
         header.pack_end(menu)
         self.refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
         self.refresh_btn.set_tooltip_text("Atualizar")
+        self.refresh_btn.add_css_class("btn-icon")
+        self.refresh_btn.set_valign(Gtk.Align.CENTER)
         self.refresh_btn.connect("clicked", self.on_refresh)
         header.pack_start(self.refresh_btn)
         about_act = Gio.SimpleAction.new("about", None)
@@ -637,6 +669,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.pair_btn_box = Gtk.Box(spacing=8, homogeneous=True)
         self.pair_btn = Gtk.Button(label="Ativar pairing (xow)")
         self.pair_btn.add_css_class("suggested-action")
+        self.pair_btn.add_css_class("btn-std")
+        self.pair_btn.set_valign(Gtk.Align.CENTER)
         self.pair_btn.connect("clicked", self.on_pair)
         self.pair_btn_box.append(self.pair_btn)
         pair_wrap = Adw.ActionRow(title="Pareamento manual")
@@ -656,6 +690,9 @@ class MainWindow(Adw.ApplicationWindow):
             description="Ative o pairing e segure o botão Xbox até piscar rápido.")
         self.empty_btn = Gtk.Button(label="Ativar pairing agora")
         self.empty_btn.add_css_class("suggested-action")
+        self.empty_btn.add_css_class("btn-std")
+        self.empty_btn.set_valign(Gtk.Align.CENTER)
+        self.empty_btn.set_halign(Gtk.Align.CENTER)
         self.empty_btn.connect("clicked", self.on_pair)
         # StatusPage sem child direto: embrulha botão numa box
         empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -679,11 +716,15 @@ class MainWindow(Adw.ApplicationWindow):
             subtitle="sudo xone-get-firmware.sh  (xow: sudo xow-get-firmware.sh)")
         fw_copy = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
         fw_copy.set_tooltip_text("Copiar comando de firmware (xone/xow)")
+        fw_copy.add_css_class("btn-icon")
+        fw_copy.set_valign(Gtk.Align.CENTER)
         fw_copy.connect("clicked", self._on_copy_fw)
         self.fw_row.add_suffix(fw_copy)
         g_sys.add(self.fw_row)
 
         vib_all = Gtk.Button(label="Vibrar todos")
+        vib_all.add_css_class("btn-std")
+        vib_all.set_valign(Gtk.Align.CENTER)
         vib_all.connect("clicked", self._on_vibrate_all)
         vib_row = Adw.ActionRow(title="Teste de vibração",
                                 subtitle="envia rumble a todos os gamepads Xbox")
@@ -692,6 +733,8 @@ class MainWindow(Adw.ApplicationWindow):
         g_sys.add(vib_row)
 
         test_all = Gtk.Button(label="Abrir testador")
+        test_all.add_css_class("btn-std")
+        test_all.set_valign(Gtk.Align.CENTER)
         test_all.connect("clicked", self._on_open_tester)
         test_row = Adw.ActionRow(title="Testador de botões",
                                  subtitle="desenho do controle com resposta ao vivo")
