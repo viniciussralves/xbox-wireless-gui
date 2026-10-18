@@ -1,0 +1,547 @@
+# English translation of xbox-wireless-gui.
+# Copyright (C) 2026 theone <viniciussralves92@gmail.com>
+# This file is distributed under the same license as the package (GPL-3.0-or-later).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: xbox-wireless-gui 0.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/viniciussralves/xbox-wireless-gui/issues\n"
+"POT-Creation-Date: 2026-10-18 15:22-0300\n"
+"PO-Revision-Date: 2026-10-18 15:30-0300\n"
+"Last-Translator: theone <viniciussralves92@gmail.com>\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Bateria"
+msgstr "Battery"
+
+msgid "via UPower"
+msgstr "via UPower"
+
+msgid "Aplicar"
+msgstr "Apply"
+
+msgid "Brilho do LED Xbox"
+msgstr "Xbox LED brightness"
+
+#, python-brace-format
+msgid "mode atual: {mode} • ajuste modo + brilho e clique em Aplicar"
+msgstr "current mode: {mode} • adjust mode + brightness and click Apply"
+
+msgid "Vibrar"
+msgstr "Vibrate"
+
+msgid "Teste de vibração"
+msgstr "Vibration test"
+
+msgid "testa a vibração via evdev (ff-rumble)"
+msgstr "tests vibration via evdev (ff-rumble)"
+
+msgid "Testar botões"
+msgstr "Test buttons"
+
+msgid "Testador de botões"
+msgstr "Button tester"
+
+msgid "abre o desenho do controle ao vivo"
+msgstr "opens the live gamepad drawing"
+
+msgid "Desconectar"
+msgstr "Disconnect"
+
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+msgid "desconecta este controle (pode parear de novo depois)"
+msgstr "disconnects this controller (you can pair it again later)"
+
+msgid "sem dados"
+msgstr "no data"
+
+#, python-brace-format
+msgid "nível {lvl}"
+msgstr "level {lvl}"
+
+msgid "aperte os botões do controle"
+msgstr "press the controller buttons"
+
+msgid "Gamepad"
+msgstr "Gamepad"
+
+msgid "Nenhum botão pressionado"
+msgstr "No button pressed"
+
+msgid "Ignora tremores pequenos dos analógicos"
+msgstr "Ignores small stick jitter"
+
+msgid "Zona morta"
+msgstr "Deadzone"
+
+msgid "vale só para o desenho do testador"
+msgstr "only applies to the tester drawing"
+
+msgid "Mapeamento"
+msgstr "Mapping"
+
+msgid "código evdev → botão do desenho"
+msgstr "evdev code → drawing button"
+
+msgid ""
+"Dica: o dispositivo virtual “X-Box 360 pad” espelha o real — teste no "
+"“Microsoft Xbox Controller”."
+msgstr ""
+"Tip: the virtual “X-Box 360 pad” mirrors the real one — test on the "
+"“Microsoft Xbox Controller”."
+
+msgid "Nenhum gamepad evdev encontrado (python3-evdev instalado?)"
+msgstr "No evdev gamepad found (is python3-evdev installed?)"
+
+msgid "python3-evdev não instalado"
+msgstr "python3-evdev not installed"
+
+#, python-brace-format
+msgid "Lendo {name} — aperte os botões…"
+msgstr "Reading {name} — press the buttons…"
+
+#, python-brace-format
+msgid "Sem permissão em {path} (grupo input ou udev rule)"
+msgstr "No permission on {path} (input group or udev rule)"
+
+#, python-brace-format
+msgid "Falha ao abrir {path}: {e}"
+msgstr "Failed to open {path}: {e}"
+
+msgid "Dispositivo desconectado"
+msgstr "Device disconnected"
+
+#, python-brace-format
+msgid "Erro de leitura: {e}"
+msgstr "Read error: {e}"
+
+#, python-brace-format
+msgid "Pressionados: {n}"
+msgstr "Pressed: {n}"
+
+msgid "Sobre"
+msgstr "About"
+
+msgid "Atualizar"
+msgstr "Refresh"
+
+msgid "Adaptador Wireless"
+msgstr "Wireless Adapter"
+
+msgid "Dongle Microsoft 045e:02e6 / 02d1 via driver xone (ou xow legado)"
+msgstr "Microsoft 045e:02e6 / 02d1 dongle via xone driver (or legacy xow)"
+
+msgid "Detectando…"
+msgstr "Detecting…"
+
+msgid "Qual dongle usar para pairing/LED"
+msgstr "Which dongle to use for pairing/LED"
+
+msgid "Dongle"
+msgstr "Dongle"
+
+msgid "Modo pairing"
+msgstr "Pairing mode"
+
+msgid "dongle visível para novos controles"
+msgstr "dongle visible to new controllers"
+
+msgid "Ativar pairing (xow)"
+msgstr "Enable pairing (xow)"
+
+msgid "Pareamento manual"
+msgstr "Manual pairing"
+
+msgid "Controles"
+msgstr "Controllers"
+
+msgid "Conectados ao dongle • expanda para LED e vibração"
+msgstr "Connected to the dongle • expand for LED and vibration"
+
+msgid "Nenhum controle conectado"
+msgstr "No controller connected"
+
+msgid "Ative o pairing e segure o botão Xbox até piscar rápido."
+msgstr "Enable pairing and hold the Xbox button until it blinks fast."
+
+msgid "Ativar pairing agora"
+msgstr "Enable pairing now"
+
+msgid "Sistema e firmware"
+msgstr "System and firmware"
+
+msgid "Firmware do dongle"
+msgstr "Dongle firmware"
+
+msgid "Instalar"
+msgstr "Install"
+
+msgid "Roda o script oficial com pkexec"
+msgstr "Runs the official script with pkexec"
+
+msgid "Copiar comando de firmware (xone/xow)"
+msgstr "Copy firmware command (xone/xow)"
+
+msgid "Duração da vibração"
+msgstr "Vibration duration"
+
+msgid "milissegundos por teste"
+msgstr "milliseconds per test"
+
+msgid "Intensidade da vibração"
+msgstr "Vibration intensity"
+
+msgid "vale para os dois motores"
+msgstr "applies to both motors"
+
+msgid "Permissões"
+msgstr "Permissions"
+
+msgid "Corrigir"
+msgstr "Fix"
+
+msgid "Instala a regra udev e ajusta o grupo input"
+msgstr "Installs the udev rule and fixes the input group"
+
+msgid "Vibrar todos"
+msgstr "Vibrate all"
+
+msgid "envia rumble a todos os gamepads Xbox"
+msgstr "sends rumble to all Xbox gamepads"
+
+msgid "Abrir testador"
+msgstr "Open tester"
+
+msgid "desenho do controle com resposta ao vivo"
+msgstr "gamepad drawing with live response"
+
+msgid "Atualizações"
+msgstr "Updates"
+
+msgid "Verificar"
+msgstr "Check"
+
+msgid "Gerencie o Xbox Wireless Adapter e controles no Fedora (xone + xow)."
+msgstr "Manage the Xbox Wireless Adapter and controllers on Fedora (xone + xow)."
+
+#, python-brace-format
+msgid "Comando copiado: {cmd}"
+msgstr "Command copied: {cmd}"
+
+#, python-brace-format
+msgid "Copie manualmente: {cmd} ({e})"
+msgstr "Copy manually: {cmd} ({e})"
+
+#, python-brace-format
+msgid "firmware ausente — {d}"
+msgstr "firmware missing — {d}"
+
+msgid "Instalar firmware do dongle?"
+msgstr "Install dongle firmware?"
+
+msgid ""
+"Roda o script oficial com pkexec. O firmware é sujeito aos Termos de Uso da "
+"Microsoft, precisa de internet e pode levar minutos."
+msgstr ""
+"Runs the official script with pkexec. The firmware is subject to Microsoft's "
+"Terms of Use, needs internet and may take minutes."
+
+msgid "Cancelar"
+msgstr "Cancel"
+
+#, python-brace-format
+msgid "nova versão disponível: {t}"
+msgstr "new version available: {t}"
+
+msgid "Abrir"
+msgstr "Open"
+
+#, python-brace-format
+msgid "Nova versão {t} disponível"
+msgstr "New version {t} available"
+
+msgid "você já está na última versão"
+msgstr "you are already on the latest version"
+
+msgid "Você já está na última versão"
+msgstr "You are already on the latest version"
+
+#, python-brace-format
+msgid "Não foi possível verificar ({e})"
+msgstr "Could not check ({e})"
+
+#, python-brace-format
+msgid "Pareando… {n}s"
+msgstr "Pairing… {n}s"
+
+msgid "Driver xone • dongle conectado"
+msgstr "xone driver • dongle connected"
+
+#, python-brace-format
+msgid "{d} • pairing=ON (desde {h})"
+msgstr "{d} • pairing=ON (since {h})"
+
+#, python-brace-format
+msgid "{d} • pairing=OFF"
+msgstr "{d} • pairing=OFF"
+
+msgid "Driver xow (legado)"
+msgstr "xow driver (legacy)"
+
+#, python-brace-format
+msgid "xow em pairing ({n}s restantes)"
+msgstr "xow pairing ({n}s left)"
+
+#, python-brace-format
+msgid "serviço ativo: {s}"
+msgstr "service active: {s}"
+
+msgid "Nenhum dongle detectado"
+msgstr "No dongle detected"
+
+msgid "plugue o adaptador 045e:02e6/02d1"
+msgstr "plug in the 045e:02e6/02d1 adapter"
+
+msgid "Adaptador não encontrado"
+msgstr "Adapter not found"
+
+#, python-brace-format
+msgid "Controle {n}"
+msgstr "Controller {n}"
+
+#, python-brace-format
+msgid "{cid} • mode={m} brilho={b}/{mx}"
+msgstr "{cid} • mode={m} brightness={b}/{mx}"
+
+msgid " (virtual)"
+msgstr " (virtual)"
+
+msgid "Sem dados de bateria"
+msgstr "No battery data"
+
+msgid "UPower não reportou nenhum controle"
+msgstr "UPower reported no controller"
+
+msgid " • ligue o controle agora"
+msgstr " • turn on the controller now"
+
+msgid "Sem driver para parear"
+msgstr "No driver to pair with"
+
+msgid "Nenhum gamepad evdev encontrado"
+msgstr "No evdev gamepad found"
+
+msgid "Carregando"
+msgstr "Charging"
+
+msgid "Descarregando"
+msgstr "Discharging"
+
+msgid "Vazia"
+msgstr "Empty"
+
+msgid "Carregada"
+msgstr "Charged"
+
+msgid "Carga pendente"
+msgstr "Pending charge"
+
+msgid "Descarga pendente"
+msgstr "Pending discharge"
+
+msgid "Desconhecida"
+msgstr "Unknown"
+
+msgid "desconhecido"
+msgstr "unknown"
+
+msgid "baixo"
+msgstr "low"
+
+msgid "crítico"
+msgstr "critical"
+
+msgid "normal"
+msgstr "normal"
+
+msgid "alto"
+msgstr "high"
+
+msgid "cheio"
+msgstr "full"
+
+msgid "UPower indisponível"
+msgstr "UPower unavailable"
+
+msgid "dispositivo não é Bluetooth (sem MAC no phys)"
+msgstr "device is not Bluetooth (no MAC in phys)"
+
+msgid "bluetoothctl não encontrado"
+msgstr "bluetoothctl not found"
+
+msgid "timeout no bluetoothctl"
+msgstr "bluetoothctl timeout"
+
+#, python-brace-format
+msgid "falha ao chamar bluetoothctl: {e}"
+msgstr "failed to run bluetoothctl: {e}"
+
+#, python-brace-format
+msgid "{mac} desconectado"
+msgstr "{mac} disconnected"
+
+#, python-brace-format
+msgid "bluetoothctl saiu {c}"
+msgstr "bluetoothctl exited {c}"
+
+#, python-brace-format
+msgid "instalado: {files}"
+msgstr "installed: {files}"
+
+msgid "nenhum binário xone_dongle_*.bin/xow_dongle.bin em /usr/lib/firmware"
+msgstr "no xone_dongle_*.bin/xow_dongle.bin binary in /usr/lib/firmware"
+
+#, python-brace-format
+msgid "script: {s}"
+msgstr "script: {s}"
+
+msgid "script xone/xow-get-firmware.sh não está no PATH"
+msgstr "xone/xow-get-firmware.sh script is not on PATH"
+
+msgid "script de firmware não encontrado (instale o xone/xow primeiro)"
+msgstr "firmware script not found (install xone/xow first)"
+
+msgid "pkexec não encontrado"
+msgstr "pkexec not found"
+
+msgid "timeout instalando firmware (>10min)"
+msgstr "firmware install timeout (>10min)"
+
+#, python-brace-format
+msgid "falha ao chamar firmware: {e}"
+msgstr "failed to run firmware: {e}"
+
+#, python-brace-format
+msgid "firmware instalado: {files}"
+msgstr "firmware installed: {files}"
+
+msgid "script concluiu"
+msgstr "script finished"
+
+#, python-brace-format
+msgid "script saiu com código {c}"
+msgstr "script exited with code {c}"
+
+msgid "sem gamepad para testar"
+msgstr "no gamepad to test"
+
+msgid "python3-evdev ausente (leitura não testada)"
+msgstr "python3-evdev missing (read not tested)"
+
+msgid "regra udev ausente"
+msgstr "udev rule missing"
+
+msgid "usuário fora do grupo input"
+msgstr "user not in the input group"
+
+#, python-brace-format
+msgid "LED sem escrita ({n})"
+msgstr "LED not writable ({n})"
+
+#, python-brace-format
+msgid "pairing sem escrita ({n})"
+msgstr "pairing not writable ({n})"
+
+#, python-brace-format
+msgid "evdev sem leitura ({info})"
+msgstr "evdev not readable ({info})"
+
+msgid "tudo certo"
+msgstr "all good"
+
+msgid "arquivo da regra não encontrado na instalação"
+msgstr "rule file not found in the installation"
+
+msgid "timeout instalando a regra"
+msgstr "rule install timeout"
+
+#, python-brace-format
+msgid "falha ao chamar pkexec: {e}"
+msgstr "failed to run pkexec: {e}"
+
+#, python-brace-format
+msgid "pkexec saiu {c}"
+msgstr "pkexec exited {c}"
+
+msgid " (entre de novo no grupo input no próximo login)"
+msgstr " (re-enter the input group on next login)"
+
+msgid "permissões corrigidas"
+msgstr "permissions fixed"
+
+#, python-brace-format
+msgid "regra instalada; pendente: {d}"
+msgstr "rule installed; pending: {d}"
+
+#, python-brace-format
+msgid "vibração enviada em {path}"
+msgstr "vibration sent on {path}"
+
+#, python-brace-format
+msgid "sem permissão em {path} (adicione udev rule input ou rode com sudo)"
+msgstr "no permission on {path} (add input udev rule or run with sudo)"
+
+msgid "arquivo pairing não encontrado (dongle desplugado?)"
+msgstr "pairing file not found (dongle unplugged?)"
+
+msgid "pairing=ativado"
+msgstr "pairing=enabled"
+
+msgid "pairing=desativado"
+msgstr "pairing=disabled"
+
+#, python-brace-format
+msgid "falha ao escrever pairing: {e}"
+msgstr "failed to write pairing: {e}"
+
+msgid "timeout no pkexec"
+msgstr "pkexec timeout"
+
+#, python-brace-format
+msgid "{cid} inválido"
+msgstr "invalid {cid}"
+
+#, python-brace-format
+msgid "mode {mode} inválido (use 0-2)"
+msgstr "invalid mode {mode} (use 0-2)"
+
+#, python-brace-format
+msgid "brilho {brilho} inválido"
+msgstr "invalid brightness {brilho}"
+
+#, python-brace-format
+msgid "{cid} não existe"
+msgstr "{cid} does not exist"
+
+#, python-brace-format
+msgid "brilho fora da faixa 0-{mx}"
+msgstr "brightness out of range 0-{mx}"
+
+msgid "brilho fora da faixa"
+msgstr "brightness out of range"
+
+msgid "LED atualizado"
+msgstr "LED updated"
+
+#, python-brace-format
+msgid "falha ao escrever LED: {e}"
+msgstr "failed to write LED: {e}"
+
+msgid "xow em modo pairing (20s). Ligue o controle."
+msgstr "xow in pairing mode (20s). Turn on the controller."

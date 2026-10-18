@@ -2,7 +2,7 @@
 Name=Xbox Wireless GUI
 Comment=Gerenciar Xbox Wireless Adapter e controles (xone/xow)
 Exec=xbox-wireless-gui
-Icon=input-gaming
+Icon=com.github.xbox-wireless-gui
 Terminal=false
 Type=Application
 Categories=Settings;HardwareSettings;

@@ -5,6 +5,8 @@ UPower >= 1.90 expõe UPowerGlib.Device só via propriedades GObject
 """
 from __future__ import annotations
 
+from backend.i18n import _
+
 
 def _kind_str(kind_int: int) -> str:
     try:
@@ -17,15 +19,15 @@ def _kind_str(kind_int: int) -> str:
 
 
 _STATE_PT = {
-    "charging": "Carregando",
-    "discharging": "Descarregando",
-    "empty": "Vazia",
-    "fully-charged": "Carregada",
-    "fully charged": "Carregada",
-    "full": "Carregada",
-    "pending-charge": "Carga pendente",
-    "pending-discharge": "Descarga pendente",
-    "unknown": "Desconhecida",
+    "charging": _("Carregando"),
+    "discharging": _("Descarregando"),
+    "empty": _("Vazia"),
+    "fully-charged": _("Carregada"),
+    "fully charged": _("Carregada"),
+    "full": _("Carregada"),
+    "pending-charge": _("Carga pendente"),
+    "pending-discharge": _("Descarga pendente"),
+    "unknown": _("Desconhecida"),
 }
 
 _LEVEL_ICON = {
@@ -55,14 +57,14 @@ def translate_state(state_en: str) -> str:
 
 def _level_pt(level_en: str) -> str:
     m = {
-        "unknown": "desconhecido",
+        "unknown": _("desconhecido"),
         "none": "—",
-        "low": "baixo",
-        "warning": "baixo",
-        "critical": "crítico",
-        "normal": "normal",
-        "high": "alto",
-        "full": "cheio",
+        "low": _("baixo"),
+        "warning": _("baixo"),
+        "critical": _("crítico"),
+        "normal": _("normal"),
+        "high": _("alto"),
+        "full": _("cheio"),
     }
     return m.get((level_en or "").strip().lower(), level_en or "?")
 
@@ -140,7 +142,7 @@ def list_batteries() -> list[dict]:
             })
         return out
     except Exception as e:  # noqa: BLE001
-        return [{"device": "UPower indisponível", "percentage": -1,
+        return [{"device": _("UPower indisponível"), "percentage": -1,
                  "state": str(e), "kind": "?", "level": "?",
                  "native_path": "", "serial": "", "icon": "",
                  "time_empty": 0, "time_full": 0}]

@@ -6,6 +6,8 @@ import re
 import shlex
 import subprocess
 
+from backend.i18n import _
+
 _LED_ID_RE = re.compile(r"^[A-Za-z0-9._:+\-]+$")
 _SYSFS_PAIRING_PREFIX = "/sys/bus/usb/drivers/xone-dongle/"
 _SYSFS_LEDS_PREFIX = "/sys/class/leds/"
@@ -18,13 +20,23 @@ POLKIT_PAIRING_ACTION = "com.github.xbox-wireless-gui.pairing"
 POLKIT_LED_ACTION = "com.github.xbox-wireless-gui.led"
 
 
-def get_pairing_file() -> str | None:
+def list_dongles() -> list[str]:
+    """Todos os dongles ligados (suporte a múltiplos adaptadores)."""
+    return sorted(glob.glob("/sys/bus/usb/drivers/xone-dongle/*:*"))
+
+
+def get_pairing_file(dongle: str | None = None) -> str | None:
+    if dongle is not None:
+        if not dongle.startswith(_SYSFS_PAIRING_PREFIX) or ".." in dongle:
+            return None
+        cand = os.path.join(dongle, "pairing")
+        return cand if os.path.isfile(cand) else None
     files = glob.glob("/sys/bus/usb/drivers/xone-dongle/*/pairing")
     return sorted(files)[0] if files else None
 
 
-def get_pairing() -> bool | None:
-    pf = get_pairing_file()
+def get_pairing(dongle: str | None = None) -> bool | None:
+    pf = get_pairing_file(dongle)
     if not pf:
         return None
     try:
@@ -55,30 +67,30 @@ def _run_pkexec_shell(snippet: str) -> subprocess.CompletedProcess:
                           capture_output=True, text=True, timeout=60)
 
 
-def set_pairing(enable: bool) -> tuple[bool, str]:
+def set_pairing(enable: bool, dongle: str | None = None) -> tuple[bool, str]:
     """Precisa de root. Tenta escrita direta, senão pkexec (polkit)."""
-    pf = _valid_pairing_file(get_pairing_file())
+    pf = _valid_pairing_file(get_pairing_file(dongle))
     if not pf:
-        return False, "arquivo pairing não encontrado (dongle desplugado?)"
+        return False, _("arquivo pairing não encontrado (dongle desplugado?)")
     val = "1" if enable else "0"
     try:
         with open(pf, "w") as f:
             f.write(val + "\n")
-        return True, f"pairing={'ativado' if enable else 'desativado'}"
+        return True, _("pairing=ativado") if enable else _("pairing=desativado")
     except PermissionError:
         pass  # cai para pkexec abaixo
     except OSError as e:
-        return False, f"falha ao escrever pairing: {e}"
+        return False, _("falha ao escrever pairing: {e}").format(e=e)
     cmd = f"echo {val} > {shlex.quote(pf)}"
     try:
         r = _run_pkexec_shell(cmd)
         if r.returncode == 0:
-            return True, f"pairing={'ativado' if enable else 'desativado'}"
+            return True, _("pairing=ativado") if enable else _("pairing=desativado")
         return False, (r.stderr or r.stdout or f"pkexec saiu {r.returncode}").strip()
     except subprocess.TimeoutExpired:
-        return False, "timeout no pkexec"
+        return False, _("timeout no pkexec")
     except FileNotFoundError:
-        return False, "pkexec não encontrado"
+        return False, _("pkexec não encontrado")
 
 
 def list_controllers() -> list[dict]:
@@ -100,44 +112,44 @@ def list_controllers() -> list[dict]:
 
 def set_led(cid: str, mode: str, brightness: str) -> tuple[bool, str]:
     if not cid or not _LED_ID_RE.match(cid):
-        return False, f"{cid} inválido"
+        return False, _("{cid} inválido").format(cid=cid)
     if mode not in ("0", "1", "2"):
-        return False, f"mode {mode} inválido (use 0-2)"
+        return False, _("mode {mode} inválido (use 0-2)").format(mode=mode)
     try:
         bval = int(brightness)
     except (ValueError, TypeError):
-        return False, f"brilho {brightness} inválido"
+        return False, _("brilho {brilho} inválido").format(brilho=brightness)
     base = f"/sys/class/leds/{cid}"
     # sysfs usa symlinks (realpath -> /sys/devices), então valida a string
     # + existência, não o prefixo do realpath.
     if not base.startswith(_SYSFS_LEDS_PREFIX) or not os.path.isdir(base):
-        return False, f"{cid} não existe"
+        return False, _("{cid} não existe").format(cid=cid)
     # valida faixa contra max_brightness quando legível
     try:
         with open(os.path.join(base, "max_brightness")) as f:
             mx = int(f.read().strip())
         if not 0 <= bval <= mx:
-            return False, f"brilho fora da faixa 0-{mx}"
+            return False, _("brilho fora da faixa 0-{mx}").format(mx=mx)
     except (OSError, ValueError):
         if not 0 <= bval <= 255:
-            return False, "brilho fora da faixa"
+            return False, _("brilho fora da faixa")
     # tenta escrita direta (roda como root / udev rule), senão pkexec
     try:
         with open(os.path.join(base, "mode"), "w") as f:
             f.write(mode + "\n")
         with open(os.path.join(base, "brightness"), "w") as f:
             f.write(str(bval) + "\n")
-        return True, "LED atualizado"
+        return True, _("LED atualizado")
     except PermissionError:
         pass
     except OSError as e:
-        return False, f"falha ao escrever LED: {e}"
+        return False, _("falha ao escrever LED: {e}").format(e=e)
     cmd = (f"echo {shlex.quote(mode)} > {shlex.quote(base + '/mode')}; "
            f"echo {shlex.quote(str(bval))} > {shlex.quote(base + '/brightness')}")
     try:
         r = _run_pkexec_shell(cmd)
         if r.returncode == 0:
-            return True, "LED atualizado"
+            return True, _("LED atualizado")
         return False, (r.stderr or r.stdout or f"pkexec saiu {r.returncode}").strip()
     except Exception as e:  # noqa: BLE001
         return False, str(e)

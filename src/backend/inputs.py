@@ -42,13 +42,17 @@ def key_map() -> dict[int, str]:
     }
 
 
-def _norm_stick(value: int, lo: int, hi: int) -> float:
+def _norm_stick(value: int, lo: int, hi: int, deadzone: float = 0.0) -> float:
     if hi <= lo:
         return 0.0
     mid = (hi + lo) / 2.0
     span = (hi - lo) / 2.0
     v = (value - mid) / span
-    return max(-1.0, min(1.0, v))
+    v = max(-1.0, min(1.0, v))
+    # zona morta: ignora tremor perto do centro (preferência do testador)
+    if deadzone > 0 and abs(v) < deadzone:
+        return 0.0
+    return v
 
 
 def _norm_trigger(value: int, lo: int, hi: int) -> float:
@@ -67,7 +71,8 @@ def apply_key(state: dict, code: int, pressed: bool) -> bool:
 
 
 def apply_abs(state: dict, code: int, value: int,
-              limits: dict[int, tuple[int, int]]) -> bool:
+              limits: dict[int, tuple[int, int]],
+              deadzone: float = 0.0) -> bool:
     """Aplica evento EV_ABS. limits: {code: (min, max)} do dispositivo."""
     try:
         from evdev import ecodes
@@ -75,13 +80,13 @@ def apply_abs(state: dict, code: int, value: int,
         return False
     lo, hi = limits.get(code, (0, 0))
     if code == ecodes.ABS_X:
-        state["lx"] = _norm_stick(value, lo or -32768, hi or 32767)
+        state["lx"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
     elif code == ecodes.ABS_Y:
-        state["ly"] = _norm_stick(value, lo or -32768, hi or 32767)
+        state["ly"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
     elif code == ecodes.ABS_RX:
-        state["rx"] = _norm_stick(value, lo or -32768, hi or 32767)
+        state["rx"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
     elif code == ecodes.ABS_RY:
-        state["ry"] = _norm_stick(value, lo or -32768, hi or 32767)
+        state["ry"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
     elif code == ecodes.ABS_Z:
         state["lt"] = _norm_trigger(value, lo or 0, hi or 255)
     elif code == ecodes.ABS_RZ:

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="com.github.xbox-wireless-gui" path="/com/github/xbox-wireless-gui/">
+    <key name="rumble-duration" type="i">
+      <default>600</default>
+      <range min="100" max="2000"/>
+      <summary>Duração da vibração de teste</summary>
+      <description>Duração em milissegundos do teste de vibração.</description>
+    </key>
+    <key name="rumble-strong" type="i">
+      <default>50</default>
+      <range min="0" max="100"/>
+      <summary>Intensidade do motor forte</summary>
+      <description>Intensidade percentual do motor forte no teste de vibração.</description>
+    </key>
+    <key name="rumble-weak" type="i">
+      <default>50</default>
+      <range min="0" max="100"/>
+      <summary>Intensidade do motor fraco</summary>
+      <description>Intensidade percentual do motor fraco no teste de vibração.</description>
+    </key>
+    <key name="tester-deadzone" type="d">
+      <default>0.08</default>
+      <range min="0.0" max="0.5"/>
+      <summary>Zona morta dos analógicos no testador</summary>
+      <description>Valores abaixo deste limiar são tratados como zero no testador de botões.</description>
+    </key>
+    <key name="selected-dongle" type="s">
+      <default>''</default>
+      <summary>Dongle preferido</summary>
+      <description>sysfs do dongle preferido quando há mais de um; vazio = automático.</description>
+    </key>
+    <key name="check-updates" type="b">
+      <default>true</default>
+      <summary>Verificar atualizações</summary>
+      <description>Verifica novos releases no GitHub ao abrir o app.</description>
+    </key>
+  </schema>
+</schemalist>

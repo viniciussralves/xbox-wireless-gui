@@ -11,6 +11,11 @@ class DriverInfo:
     name: str  # "xone", "xow", "nenhum"
     dongle_sysfs: str | None = None
     detail: str = ""
+    dongles: list = None  # todos os dongles xone (vazio se < 2)
+
+    def __post_init__(self):
+        if self.dongles is None:
+            self.dongles = []
 
 
 def detect_xone_dongle() -> str | None:
@@ -49,8 +54,10 @@ def detect() -> DriverInfo:
     dongle = detect_xone_dongle()
     if dongle:
         pf = xone_pairing_file(dongle)
+        all_dongles = sorted(glob.glob("/sys/bus/usb/drivers/xone-dongle/*:*"))
         return DriverInfo(name="xone", dongle_sysfs=dongle,
-                          detail=f"dongle={dongle} pairing_file={pf}")
+                          detail=f"dongle={dongle} pairing_file={pf}",
+                          dongles=all_dongles)
     if detect_xow():
         return DriverInfo(name="xow", detail="serviço xow detectado")
     return DriverInfo(name="nenhum", detail="sem dongle xone e sem xow")

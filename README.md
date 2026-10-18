@@ -19,21 +19,29 @@ python3 src/main.py
 ```
 
 ## Funcionalidades
-- Detectar driver (xone sysfs `/sys/bus/usb/drivers/xone-dongle/*/pairing` / xow systemd).
-- Ativar/desativar pairing (via `pkexec` — polkit).
-- Listar controles (`/sys/class/leds/gip*` + evdev).
+- Detectar driver (xone sysfs `/sys/bus/usb/drivers/xone-dongle/*/pairing` / xow systemd), com suporte a múltiplos dongles.
+- Ativar/desativar pairing (via `pkexec` — polkit), com tempo decorrido (xone) e contagem regressiva de 20s (xow).
+- Listar controles (`/sys/class/leds/gip*` + evdev), incluindo Bluetooth (xpadneo) com botão Desconectar.
 - Bateria via UPower.
-- LED mode/brightness (xone sysfs).
-- Teste vibração via evdev ff-rumble.
-- Dica firmware: `sudo xone-get-firmware.sh`.
+- LED mode/brightness (xone sysfs), preservando o modo atual por padrão.
+- Teste vibração via evdev ff-rumble, com duração e intensidade configuráveis (persistidos em GSettings).
+- Firmware: detecta `xone_dongle_*.bin`/`xow_dongle.bin` e instala via script oficial (com disclaimer da MS).
+- Permissões: regra udev + grupo `input` com assistente de correção (evita `pkexec` a cada clique).
+- Testador de botões ao vivo, com zona morta configurável e tabela de mapeamento evdev.
+- i18n pt-BR + en, verificação de atualizações no GitHub, testes (`python3 -m unittest discover -s tests`).
 
 ## Instalar deps (Fedora)
 ```sh
 sudo dnf install -y python3-gobject gtk4 libadwaita gobject-introspection python3-evdev evtest joystick upower polkit
 ```
 
-## Empacotar (próximo passo)
-- `fedora/xbox-wireless-gui.spec` + regra polkit + `.desktop` para COPR.
+## Empacotar (Fedora/COPR)
+```sh
+sudo dnf copr enable viniciussralves/xbox-wireless-gui  # quando publicado
+sudo dnf install xbox-wireless-gui
+# ou build local do SRPM via .copr/Makefile
+```
+- `fedora/xbox-wireless-gui.spec` + AppData + ícone + man + GSettings + regra udev + locales.
 
 ## Licença
 GPL-3.0-or-later — veja [LICENSE](LICENSE).

@@ -1,0 +1,35 @@
+.TH XBOX-WIRELESS-GUI 1 "October 2026" "0.1.0" "User Commands"
+.SH NAME
+xbox-wireless-gui \- manage the Xbox Wireless Adapter and controllers on Linux
+.SH SYNOPSIS
+.B xbox-wireless-gui
+.RI [ OPTION... ]
+.SH DESCRIPTION
+GTK4 + Libadwaita interface for the Microsoft Xbox Wireless Adapter on Linux,
+with automatic detection of the
+.B xone
+(current) and
+.B xow
+(legacy) drivers.
+.PP
+It enables/disables pairing, lists controllers with UPower battery status,
+adjusts the guide-button LED, tests force-feedback rumble and includes a
+live button tester.
+.SH OPTIONS
+Standard GTK/GApplication options, e.g.
+.BR \-h ", " \-\-help .
+.SH FILES
+.TP
+.I /sys/bus/usb/drivers/xone-dongle/*/pairing
+pairing switch of the xone dongle (root or input group with the shipped udev rule)
+.TP
+.I /sys/class/leds/gip*
+LED mode/brightness of xone controllers
+.TP
+.I /usr/share/xbox-wireless-gui/
+application data (main.py, backend)
+.SH "SEE ALSO"
+.BR xone-get-firmware.sh (8),
+.BR bluetoothctl (1)
+.SH AUTHOR
+theone <viniciussralves92@gmail.com>. License GPL-3.0-or-later.

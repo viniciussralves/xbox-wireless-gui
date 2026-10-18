@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python3 -m py_compile src/main.py src/backend/*.py tests/*.py
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Validate desktop file
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq desktop-file-utils
+          desktop-file-validate data/com.github.xbox-wireless-gui.desktop
+      - name: Validate AppData and schema
+        run: |
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('data/com.github.xbox-wireless-gui.metainfo.xml'); print('metainfo XML OK')"
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('data/com.github.xbox-wireless-gui.gschema.xml'); print('gschema XML OK')"
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('data/org.xboxwireless.gui.policy'); print('policy XML OK')"

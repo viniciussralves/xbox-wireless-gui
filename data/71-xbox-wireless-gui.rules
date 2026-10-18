@@ -1,0 +1,9 @@
+# Xbox Wireless GUI — permite ao grupo `input` gerenciar pairing e LEDs
+# sem pkexec a cada clique. Instalado por install_fix() (backend/permissions.py)
+# ou pelo RPM em /usr/lib/udev/rules.d.
+
+# LEDs dos controles (xone): escrita em mode/brightness para o grupo input
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="gip*", RUN+="/bin/sh -c 'chgrp input /sys%p/brightness /sys%p/mode 2>/dev/null; chmod g+w /sys%p/brightness /sys%p/mode 2>/dev/null'"
+
+# Dongle xone: escrita no pairing para o grupo input
+ACTION=="add", DRIVER=="xone-dongle", RUN+="/bin/sh -c 'chgrp input /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null; chmod g+w /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null'"

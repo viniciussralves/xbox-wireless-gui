@@ -3,6 +3,8 @@ from __future__ import annotations
 import shutil
 import subprocess
 
+from backend.i18n import _
+
 
 def available() -> bool:
     return shutil.which("xow") is not None
@@ -23,7 +25,7 @@ def set_pairing() -> tuple[bool, str]:
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if r.returncode == 0:
-            return True, "xow em modo pairing (20s). Ligue o controle."
+            return True, _("xow em modo pairing (20s). Ligue o controle.")
         return False, (r.stderr or r.stdout).strip()
     except Exception as e:  # noqa: BLE001
         return False, str(e)

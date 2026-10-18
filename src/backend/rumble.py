@@ -2,6 +2,8 @@
 from __future__ import annotations
 import glob
 
+from backend.i18n import _
+
 
 def find_gamepads() -> list[dict]:
     try:
@@ -39,8 +41,8 @@ def rumble(path: str, duration_ms: int = 600, strong: int = 0x8000, weak: int = 
         time.sleep(duration_ms / 1000 + 0.2)
         dev.write(ecodes.EV_FF, eid, 0)
         dev.erase_effect(eid)
-        return True, f"vibração enviada em {path}"
+        return True, _("vibração enviada em {path}").format(path=path)
     except PermissionError:
-        return False, f"sem permissão em {path} (adicione udev rule input ou rode com sudo)"
+        return False, _("sem permissão em {path} (adicione udev rule input ou rode com sudo)").format(path=path)
     except Exception as e:  # noqa: BLE001
         return False, str(e)
