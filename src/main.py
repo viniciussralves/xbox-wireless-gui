@@ -20,11 +20,16 @@ levelbar block { border-radius: 4px; min-height: 10px; }
 levelbar block.filled { background: @success_bg_color; }
 levelbar.warn block.filled { background: @warning_bg_color; }
 levelbar.crit block.filled { background: @error_bg_color; }
-.bat-pct { font-weight: 800; }
-.dim { opacity: .75; }
+.bat-pct { font-size: 14pt; font-weight: 800; }
+.dim { font-size: 10pt; opacity: .75; }
 .btn-std { min-width: 140px; min-height: 34px; border-radius: 9px; }
 .btn-icon { min-width: 34px; min-height: 34px; border-radius: 9px; }
 """
+
+# Escala única de fontes da interface: cada papel, um tamanho.
+UI_FONT_BATTERY_PT = 14  # % da bateria (classe .bat-pct)
+UI_FONT_DIM_PT = 10      # textos auxiliares (classe .dim)
+UI_FONT_CANVAS = 12      # todos os rótulos do desenho do controle
 
 
 def fmt_duration(sec: int) -> str:
@@ -83,7 +88,7 @@ class ControllerCard(Adw.ExpanderRow):
         self.bat_bar.set_valign(Gtk.Align.CENTER)
         self.bat_label = Gtk.Label()
         self.bat_label.add_css_class("bat-pct")
-        self.bat_label.set_markup('<span size="x-large"><b>—</b></span>')
+        self.bat_label.set_markup('<b>—</b>')
         bat_box = Gtk.Box(spacing=10)
         bat_box.append(self.bat_icon)
         bat_box.append(self.bat_bar)
@@ -161,11 +166,11 @@ class ControllerCard(Adw.ExpanderRow):
         except (ValueError, TypeError):
             pct = -1
         if pct < 0:
-            self.bat_label.set_markup('<span size="x-large"><b>—</b></span>')
+            self.bat_label.set_markup('<b>—</b>')
             self.bat_row.set_subtitle("sem dados")
             return
         style_bat_bar(self.bat_bar, pct)
-        self.bat_label.set_markup(f'<span size="x-large"><b>{pct}%</b></span>')
+        self.bat_label.set_markup(f'<b>{pct}%</b>')
         icon = b.get("icon") or "battery-good-symbolic"
         self.bat_icon.set_from_icon_name(icon)
         self.bat_icon.set_pixel_size(28)
@@ -457,7 +462,7 @@ class TesterWindow(Adw.Window):
                 cr.set_source_rgb(FR, FG, FB)
                 cr.stroke()
 
-        def text(x, y, label, size=13, on: bool = False):
+        def text(x, y, label, size=UI_FONT_CANVAS, on: bool = False):
             cr.new_path()  # show_text deixa current-point; isola o caminho
             if on:
                 cr.set_source_rgb(*ON)
@@ -483,7 +488,7 @@ class TesterWindow(Adw.Window):
             cr.arc(x + r, y + r, r, math.pi, math.pi * 1.5)
             cr.close_path()
 
-        def rbutton(x, y, w_=None, h_=None, label="", active=False, size=12):
+        def rbutton(x, y, w_=None, h_=None, label="", active=False, size=UI_FONT_CANVAS):
             """Botão retangular padrão; ativo ganha anel interno verde."""
             w_ = BTN_W if w_ is None else w_
             h_ = BTN_H if h_ is None else h_
@@ -511,7 +516,7 @@ class TesterWindow(Adw.Window):
                 cr.move_to(x + 6, 33)
                 cr.line_to(x + 6 + 98 * v, 33)
                 stroke(True)
-            text(x + 55, 14, f"LT {s['lt']:.0%}" if i == 0 else f"RT {s['rt']:.0%}", 11, on)
+            text(x + 55, 14, f"LT {s['lt']:.0%}" if i == 0 else f"RT {s['rt']:.0%}", UI_FONT_CANVAS, on)
 
         # ---- LB / View / Xbox / Menu / RB (padrão 44x32, simétricos) ----
         rbutton(60, 58, label="LB", active=s["lb"])
@@ -968,9 +973,9 @@ class MainWindow(Adw.ApplicationWindow):
             pct_lbl.add_css_class("bat-pct")
             if pct >= 0:
                 style_bat_bar(bar, pct)
-                pct_lbl.set_markup(f'<span size="x-large"><b>{pct}%</b></span>')
+                pct_lbl.set_markup(f'<b>{pct}%</b>')
             else:
-                pct_lbl.set_markup('<span size="x-large"><b>—</b></span>')
+                pct_lbl.set_markup('<b>—</b>')
             suffix = Gtk.Box(spacing=10)
             suffix.append(bar)
             suffix.append(pct_lbl)
