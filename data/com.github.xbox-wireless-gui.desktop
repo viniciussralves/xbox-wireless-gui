@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Xbox Wireless GUI
+Comment=Gerenciar Xbox Wireless Adapter e controles (xone/xow)
+Exec=xbox-wireless-gui
+Icon=input-gaming
+Terminal=false
+Type=Application
+Categories=Settings;HardwareSettings;
+StartupNotify=true
+StartupWMClass=xbox-wireless-gui
