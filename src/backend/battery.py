@@ -71,13 +71,14 @@ def icon_for(pct: int, state_en: str, level_en: str) -> str:
     """Ícone calculado localmente: não confia no icon_name do UPower,
     que reporta battery-low a 55%% em alguns gamepads xone."""
     st = (state_en or "").lower()
-    # "discharging" contém "charg" — checar descarga primeiro
+    # "discharging" contém "charg" — checar descarga primeiro;
+    # "fully-charged" contém "charg" — checar cheio antes de carregando
     if "discharg" in st:
         pass  # cai na lógica por percentual abaixo
-    elif "charg" in st:
-        return "battery-good-charging-symbolic"
     elif "full" in st:
         return "battery-full-charged-symbolic"
+    elif "charg" in st:
+        return "battery-good-charging-symbolic"
     if pct >= 0:
         if pct <= 15:
             return "battery-empty-symbolic"

@@ -22,7 +22,7 @@ mkdir -p %{buildroot}%{_datadir}/polkit-1/actions
 # wrapper que encontra o backend em /usr/share + checkout dev
 cat > %{buildroot}%{_bindir}/xbox-wireless-gui <<'EOF'
 #!/bin/sh
-for d in %{_datadir}/xbox-wireless-gui "$(dirname "$0")/../share/xbox-wireless-gui" "$(dirname "$0")/../src"; do
+for d in %{_datadir}/xbox-wireless-gui "$(dirname "$0")/../src"; do
   if [ -f "$d/main.py" ]; then exec python3 "$d/main.py" "$@"; fi
 done
 exec python3 %{_datadir}/xbox-wireless-gui/main.py "$@"
