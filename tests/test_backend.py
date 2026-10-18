@@ -140,5 +140,16 @@ class TestRumbleXow(unittest.TestCase):
         self.assertIn("xow", xow.firmware_hint())
 
 
+class TestI18nHygiene(unittest.TestCase):
+    def test_no_shadowed_gettext(self):
+        """Nenhum método pode usar `*_` (vira tupla `_` e quebra o gettext)."""
+        import re
+        path = os.path.join(os.path.dirname(__file__), "..", "src", "main.py")
+        with open(path, encoding="utf-8") as f:
+            src = f.read()
+        bad = re.findall(r"def \w+\(self, \*_\):", src)
+        self.assertEqual(bad, [], f"métodos com `*_`: {bad}")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -397,7 +397,7 @@ class TesterWindow(Adw.Window):
             self._dev = None
         self._state["connected"] = False
 
-    def _on_close(self, *_):
+    def _on_close(self, *_args):
         self._stop()
         return False
 
@@ -942,7 +942,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._prefs.set_string("selected-dongle", self._dongles[i])
             self.on_refresh()
 
-    def _on_about(self, *_):
+    def _on_about(self, *_args):
         dlg = Adw.AboutWindow(
             transient_for=self, application_name="Xbox Wireless GUI",
             version=APP_VERSION,
@@ -1119,7 +1119,7 @@ class MainWindow(Adw.ApplicationWindow):
             print(f"auto-refresh falhou: {e}")
         return True  # mantém o timer
 
-    def on_refresh(self, *_):
+    def on_refresh(self, *_args):
         self.refresh_btn.set_sensitive(False)
         try:
             info = detector.detect()
@@ -1361,7 +1361,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.toast(msg)
         self.on_refresh()
 
-    def on_pair(self, *_):
+    def on_pair(self, *_args):
         info = detector.detect()
         if info.name == "xone":
             ok, msg = xone.set_pairing(True, self._selected_dongle())
