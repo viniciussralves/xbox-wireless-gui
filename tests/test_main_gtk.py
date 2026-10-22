@@ -1,6 +1,9 @@
 """Widgets main.py que precisam de display (pulados sem X/Wayland)."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
+import time
 import unittest
 from unittest import mock
 
@@ -11,6 +14,16 @@ try:
     HAVE_MAIN = True
 except Exception:  # noqa: BLE001 (CI sem gir)
     HAVE_MAIN = False
+
+
+def pump(seconds=0.3):
+    from gi.repository import GLib
+    end = time.time() + seconds
+    ctx = GLib.main_context_default()
+    while time.time() < end:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.01)
 
 
 def have_display():
@@ -61,6 +74,7 @@ class TestControllerCard(unittest.TestCase):
                                return_value=(True, "ok")) as sl:
             card.led_scale.set_value(30)
             card._on_led_apply(None)
+            pump()
             sl.assert_called_once_with("gip0.0:white:status", "1", "30")
         self.win.toast.assert_called()
         card._on_vibrate(None)
@@ -97,6 +111,7 @@ class TestControllerCard(unittest.TestCase):
              mock.patch.object(main.xone, "set_led",
                                return_value=(True, "ok")) as sl:
             card._on_led_apply(None)
+            pump()
             sl.assert_called_once_with("gip0.0:white:status", "1", "20")
 
 

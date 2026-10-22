@@ -17,7 +17,14 @@ _MAC_RE = re.compile(r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}")
 def phys_of(path: str) -> str | None:
     try:
         from evdev import InputDevice
-        return InputDevice(path).phys or None
+        dev = InputDevice(path)
+        try:
+            return dev.phys or None
+        finally:
+            try:
+                dev.close()
+            except OSError:
+                pass
     except (ImportError, OSError):
         return None
 

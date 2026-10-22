@@ -1,5 +1,7 @@
 """Fecha os últimos gaps de cobertura do backend (todos com mock)."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import unittest
 from unittest import mock
@@ -19,16 +21,38 @@ class TestGapBattery(unittest.TestCase):
 
 class TestGapFirmware(unittest.TestCase):
     def test_script_found(self):
-        with mock.patch("shutil.which", return_value="/usr/bin/xone-get-firmware.sh"):
+        with mock.patch("shutil.which",
+                        return_value="/usr/bin/xone-get-firmware.sh"), \
+             mock.patch("backend.firmware._trusted_script",
+                        return_value="/usr/bin/xone-get-firmware.sh"):
             self.assertEqual(firmware.script_for("xone"),
                              "/usr/bin/xone-get-firmware.sh")
+
+    def test_trusted_script_rejects_tmp(self):
+        import tempfile
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        os.chmod(path, 0o755)
+        try:
+            self.assertIsNone(firmware._trusted_script(path))
+        finally:
+            os.unlink(path)
+
+    def test_installed_files_driver_patterns(self):
+        with mock.patch("os.path.isdir", return_value=True), \
+             mock.patch("backend.firmware.glob.glob",
+                        return_value=[]) as g:
+            firmware.installed_files("xow")
+        patterns = [c.args[0] for c in g.call_args_list]
+        self.assertTrue(patterns)
+        self.assertTrue(all("xow_dongle.bin" in p for p in patterns))
 
 
 class TestGapI18n(unittest.TestCase):
     def test_null_when_no_lang(self):
         from backend import i18n
         with mock.patch.dict(os.environ, {}, clear=True), \
-             mock.patch("backend.i18n.locale.getdefaultlocale",
+             mock.patch("backend.i18n.locale.getlocale",
                         return_value=(None, None)):
             tr = i18n.get_translation()
             self.assertEqual(tr.gettext("Bateria"), "Bateria")
@@ -76,6 +100,37 @@ class TestGapInputs(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual(st["lx"], 1.0)
 
+    def test_trigger_gas_brake(self):
+        from evdev import ecodes
+        st = inputs.new_state()
+        if hasattr(ecodes, "ABS_GAS"):
+            self.assertTrue(inputs.apply_abs(st, ecodes.ABS_GAS, 255, {}))
+            self.assertEqual(st["lt"], 1.0)
+        if hasattr(ecodes, "ABS_BRAKE"):
+            self.assertTrue(inputs.apply_abs(st, ecodes.ABS_BRAKE, 0, {}))
+            self.assertEqual(st["rt"], 0.0)
+
+    def test_list_devices_close_error(self):
+        import evdev
+        from evdev import ecodes
+
+        class Dev:
+            def __init__(self, path):
+                pass
+
+            def capabilities(self, absinfo=False):
+                return {ecodes.EV_ABS: []}
+
+            def close(self):
+                raise OSError("close")
+
+        with mock.patch("backend.rumble.find_gamepads",
+                        return_value=[{"path": "/r", "name": "Pad",
+                                      "has_rumble": False}]), \
+             mock.patch.object(evdev, "InputDevice", Dev):
+            out = inputs.list_devices()
+        self.assertEqual(out[0]["path"], "/r")
+
     def test_list_devices_limits(self):
         import evdev
         from evdev import ecodes
@@ -108,7 +163,7 @@ class TestGapPermissions(unittest.TestCase):
     def test_status_all_problems(self):
         with mock.patch("backend.permissions.rule_installed",
                         return_value=None), \
-             mock.patch("backend.permissions.in_input_group",
+             mock.patch("backend.permissions.in_control_group",
                         return_value=False), \
              mock.patch("backend.permissions.leds_writable",
                         return_value=(False, ["a"])), \
@@ -118,12 +173,33 @@ class TestGapPermissions(unittest.TestCase):
                         return_value=(False, "eventX")):
             st = permissions.status()
         self.assertFalse(st["ok"])
-        self.assertIn("input", st["detail"])
+        self.assertIn("xboxwireless", st["detail"])
 
     def test_rule_source_found(self):
         with mock.patch("os.path.isfile", return_value=True):
             src = permissions._rule_source()
             self.assertTrue(src.endswith(".rules"))
+
+    def test_rule_uses_dedicated_group(self):
+        self.assertIn("xboxwireless", permissions.RULE_CONTENT)
+        self.assertNotIn("chgrp input", permissions.RULE_CONTENT)
+        self.assertIn('TAG+="uaccess"', permissions.RULE_CONTENT)
+
+    def test_primary_control_group(self):
+        class G:
+            gr_name = "xboxwireless"
+            gr_mem = []
+            gr_gid = 4242
+
+        class P:
+            pw_name = "u"
+            pw_gid = 4242
+
+        with mock.patch("backend.permissions.grp.getgrall",
+                        return_value=[G()]), \
+             mock.patch("backend.permissions.pwd.getpwuid",
+                        return_value=P()):
+            self.assertTrue(permissions.in_control_group())
 
     def test_login_user_variants(self):
         with mock.patch.dict(os.environ, {"PKEXEC_UID": "1000",
@@ -162,10 +238,14 @@ class TestGapPrefs(unittest.TestCase):
 
 
 class TestGapUpdates(unittest.TestCase):
-    def test_norm_mixed_and_compare(self):
-        self.assertEqual(updates._norm("v1.x"), (1, "x"))
-        self.assertTrue(updates.is_newer("1.x", "1.0"))
-        self.assertFalse(updates.is_newer("1.0", "1.0"))
+    def test_semver_and_prerelease(self):
+        self.assertFalse(updates.is_newer("1.x", "1.0"))
+        self.assertTrue(updates.is_newer("1.1", "1.0"))
+        self.assertFalse(updates.is_newer("v0.1.0-rc1", "0.1.0"))
+        self.assertTrue(updates.is_newer("0.1.0", "v0.1.0-rc1"))
+        self.assertTrue(updates.is_newer("1.0.0-rc2", "1.0.0-rc1"))
+        self.assertTrue(updates.is_newer("1.0.0-2", "1.0.0-1"))
+        self.assertFalse(updates.is_newer("1.0", "1.0.0"))
 
 
 class TestGapXone(unittest.TestCase):

@@ -14,7 +14,12 @@ BuildRequires:  python3-gobject
 BuildRequires:  gtk4
 BuildRequires:  libadwaita
 BuildRequires:  gobject-introspection
+BuildRequires:  desktop-file-utils
+BuildRequires:  appstream
+BuildRequires:  systemd-rpm-macros
+BuildRequires:  systemd-udev
 Requires:       python3-gobject gtk4 libadwaita upower polkit python3-evdev
+Requires:       shadow-utils systemd-udev
 Recommends:     evtest joystick
 Recommends:     bluez
 # driver via akmods/dkms/lpf ou COPR, não obrigatório: xone ou xow
@@ -36,9 +41,11 @@ done
 %install
 mkdir -p %{buildroot}%{_bindir} %{buildroot}%{_datadir}/applications
 mkdir -p %{buildroot}%{_datadir}/xbox-wireless-gui/backend
+mkdir -p %{buildroot}%{_libexecdir}
 mkdir -p %{buildroot}%{_datadir}/polkit-1/actions
 mkdir -p %{buildroot}%{_datadir}/glib-2.0/schemas
 mkdir -p %{buildroot}%{_udevrulesdir}
+mkdir -p %{buildroot}%{_sysusersdir}
 mkdir -p %{buildroot}%{_datadir}/metainfo
 mkdir -p %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
 mkdir -p %{buildroot}%{_mandir}/man1
@@ -54,10 +61,13 @@ EOF
 chmod 755 %{buildroot}%{_bindir}/xbox-wireless-gui
 install -m644 src/main.py %{buildroot}%{_datadir}/xbox-wireless-gui/main.py
 install -m644 src/backend/*.py %{buildroot}%{_datadir}/xbox-wireless-gui/backend/
+install -m755 data/xbox-wireless-gui-helper %{buildroot}%{_libexecdir}/xbox-wireless-gui-helper
+install -m644 data/71-xbox-wireless-gui.rules %{buildroot}%{_datadir}/xbox-wireless-gui/
 install -m644 data/com.github.xbox-wireless-gui.desktop %{buildroot}%{_datadir}/applications/
-install -m644 data/org.xboxwireless.gui.policy %{buildroot}%{_datadir}/polkit-1/actions/
+install -m644 data/com.github.xbox-wireless-gui.policy %{buildroot}%{_datadir}/polkit-1/actions/
 install -m644 data/com.github.xbox-wireless-gui.gschema.xml %{buildroot}%{_datadir}/glib-2.0/schemas/
 install -m644 data/71-xbox-wireless-gui.rules %{buildroot}%{_udevrulesdir}/
+install -m644 data/xbox-wireless-gui.conf %{buildroot}%{_sysusersdir}/xbox-wireless-gui.conf
 install -m644 data/com.github.xbox-wireless-gui.metainfo.xml %{buildroot}%{_datadir}/metainfo/
 install -m644 data/icons/hicolor/scalable/apps/com.github.xbox-wireless-gui.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/
 install -m644 data/xbox-wireless-gui.1 %{buildroot}%{_mandir}/man1/
@@ -66,26 +76,39 @@ cp -a locale/* %{buildroot}%{_datadir}/locale/
 %check
 python3 -m py_compile src/main.py src/backend/*.py tests/*.py
 python3 -m unittest discover -s tests
-desktop-file-validate %{buildroot}%{_datadir}/applications/com.github.xbox-wireless-gui.desktop || :
+desktop-file-validate %{buildroot}%{_datadir}/applications/com.github.xbox-wireless-gui.desktop
+appstreamcli validate --no-net %{buildroot}%{_datadir}/metainfo/com.github.xbox-wireless-gui.metainfo.xml
+glib-compile-schemas --strict --dry-run %{buildroot}%{_datadir}/glib-2.0/schemas
+udevadm verify %{buildroot}%{_udevrulesdir}/71-xbox-wireless-gui.rules
+python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('%{buildroot}%{_datadir}/polkit-1/actions/com.github.xbox-wireless-gui.policy')"
 
 %post
+%sysusers_create_compat %{_sysusersdir}/xbox-wireless-gui.conf
 glib-compile-schemas %{_datadir}/glib-2.0/schemas &>/dev/null || :
 udevadm control --reload-rules &>/dev/null || :
-udevadm trigger --subsystem-match=leds &>/dev/null || :
+udevadm trigger --action=add --subsystem-match=leds &>/dev/null || :
+udevadm trigger --action=add --subsystem-match=input &>/dev/null || :
+chgrp xboxwireless /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || :
+chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || :
 
 %postun
 glib-compile-schemas %{_datadir}/glib-2.0/schemas &>/dev/null || :
 udevadm control --reload-rules &>/dev/null || :
 
 %files
+%license LICENSE
+%doc README.md
 %{_bindir}/xbox-wireless-gui
+%{_libexecdir}/xbox-wireless-gui-helper
 %{_datadir}/xbox-wireless-gui/main.py
 %{_datadir}/xbox-wireless-gui/backend/*.py
+%{_datadir}/xbox-wireless-gui/71-xbox-wireless-gui.rules
 %{_datadir}/applications/com.github.xbox-wireless-gui.desktop
+%{_datadir}/polkit-1/actions/com.github.xbox-wireless-gui.policy
 %{_datadir}/metainfo/com.github.xbox-wireless-gui.metainfo.xml
-%{_datadir}/polkit-1/actions/org.xboxwireless.gui.policy
 %{_datadir}/glib-2.0/schemas/com.github.xbox-wireless-gui.gschema.xml
 %{_udevrulesdir}/71-xbox-wireless-gui.rules
+%{_sysusersdir}/xbox-wireless-gui.conf
 %{_datadir}/icons/hicolor/scalable/apps/com.github.xbox-wireless-gui.svg
 %{_mandir}/man1/xbox-wireless-gui.1*
 %{_datadir}/locale/*/LC_MESSAGES/xbox-wireless-gui.mo

@@ -1,5 +1,7 @@
 """Testes unitários do backend (sem hardware: sysfs/evdev/UPower com mock)."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import unittest
 from unittest import mock
@@ -86,7 +88,7 @@ class TestXoneValidation(unittest.TestCase):
 
     def test_set_led_rejects_without_write(self):
         for args in [("", "2", "5"), ("x;rm", "2", "5"),
-                     ("gip0.0:white:status", "9", "5"),
+                     ("gip0.0:white:status", "7", "5"),
                      ("gip0.0:white:status", "2", "abc"),
                      ("gip99", "2", "1")]:
             ok, _ = xone.set_led(*args)
@@ -150,6 +152,8 @@ class TestI18nHygiene(unittest.TestCase):
             src = f.read()
         bad = re.findall(r"def \w+\(self, \*_\):", src)
         self.assertEqual(bad, [], f"métodos com `*_`: {bad}")
+        loops = re.findall(r"for _ in ", src)
+        self.assertEqual(loops, [], "`for _ in` sombreia o gettext")
 
 
 if __name__ == "__main__":

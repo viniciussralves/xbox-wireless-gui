@@ -1,5 +1,7 @@
 """Casos-limite de main.py (precisa de display)."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import time
 import unittest
@@ -115,7 +117,8 @@ class ExtraCase(unittest.TestCase):
             card = main.ControllerCard("C", "s", "gip0", mock.Mock(),
                                        pad_path="/dev/q0")
             self.assertEqual(int(card.led_scale.get_value()), 0)
-            self.assertEqual(int(card.led_mode.get_selected()), 2)
+            # mode 9 (fade rápido) é válido e deve ser preservado
+            self.assertEqual(int(card.led_mode.get_selected()), 6)
         card.led_mode = mock.Mock()
         card.led_mode.get_selected.return_value = 99
         with mock.patch.object(main.xone, "list_controllers",
@@ -123,6 +126,7 @@ class ExtraCase(unittest.TestCase):
              mock.patch.object(main.xone, "set_led",
                                return_value=(True, "ok")) as sl:
             card._on_led_apply(None)
+            pump()
             self.assertEqual(sl.call_args[0][1], "2")
 
     def test_battery_card_edges(self):
@@ -216,6 +220,44 @@ class ExtraCase(unittest.TestCase):
         self.assertIn("gipX", w.cards[0].get_title())
         m["x"].list_controllers.return_value = [dict(ctrl(), id="")]
         w.on_refresh()
+
+    def test_multi_controller_titles_and_phys(self):
+        m = self.m
+        m["x"].list_controllers.return_value = [
+            ctrl("gip0.0:white:status"), ctrl("gip0.1:white:status")]
+        m["r"].find_gamepads.return_value = [
+            {"path": "/dev/q0", "name": "Microsoft Xbox Controller",
+             "has_rumble": True, "phys": "gip0.1/input0"},
+            {"path": "/dev/q1", "name": "Microsoft Xbox Controller",
+             "has_rumble": True, "phys": "gip0.0/input0"},
+        ]
+        w = self._win()
+        w.on_refresh()
+        self.assertEqual([c.get_title() for c in w.cards],
+                         ["Controle 1.1", "Controle 1.2"])
+        self.assertEqual(w.cards[0].pad_path, "/dev/q1")
+        self.assertEqual(w.cards[1].pad_path, "/dev/q0")
+
+    def test_driver_visibility_transitions(self):
+        m = self.m
+        w = self._win()
+        w.on_refresh()
+        self.assertTrue(w.pair_switch.get_visible())
+        self.assertFalse(w.pair_manual_row.get_visible())
+        self.assertFalse(w.banner.get_revealed())
+        m["d"].detect.return_value = DriverInfo(
+            name="xow", dongle_sysfs=None, detail="", dongles=[])
+        with mock.patch.object(main.xow, "service_active", return_value=True):
+            w.on_refresh()
+        self.assertFalse(w.pair_switch.get_visible())
+        self.assertTrue(w.pair_manual_row.get_visible())
+        self.assertFalse(w.banner.get_revealed())
+        m["d"].detect.return_value = DriverInfo(
+            name="nenhum", dongle_sysfs=None, detail="", dongles=[])
+        w.on_refresh()
+        self.assertFalse(w.pair_switch.get_visible())
+        self.assertFalse(w.pair_manual_row.get_visible())
+        self.assertTrue(w.banner.get_revealed())
 
     def test_expanded_restore(self):
         w = self._win()

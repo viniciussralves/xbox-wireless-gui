@@ -13,7 +13,7 @@ def _kind_str(kind_int: int) -> str:
         import gi
         gi.require_version("UPowerGlib", "1.0")
         from gi.repository import UPowerGlib
-        return UPowerGlib.Device.kind_to_string(kind_int)
+        return UPowerGlib.Device.kind_to_string(kind_int) or str(kind_int)
     except Exception:  # noqa: BLE001
         return str(kind_int)
 
@@ -101,45 +101,48 @@ def list_batteries() -> list[dict]:
         client = UPowerGlib.Client.new()
         out = []
         for dev in client.get_devices():
-            p = dev.props
-            # pula o agregado DisplayDevice e fontes AC
-            obj_path = dev.get_object_path() or ""
-            if "DisplayDevice" in obj_path:
-                continue
-            model = (p.model or "").strip()
-            vendor = (p.vendor or "").strip()
-            native = (p.native_path or "").strip()
-            kind = _kind_str(p.kind)
-            text = f"{vendor} {model}".strip()
-            is_gamepad = (
-                "gaming" in kind.lower()
-                or "gip" in native.lower()
-                or any(k in text.lower() for k in ("xbox", "gamepad", "controller"))
-            )
-            if not is_gamepad:
-                continue
             try:
-                import gi
-                gi.require_version("UPowerGlib", "1.0")
-                from gi.repository import UPowerGlib
-                level = UPowerGlib.Device.level_to_string(p.battery_level)
-            except Exception:  # noqa: BLE001
-                level = str(p.battery_level)
-            out.append({
-                "device": text or native or "controle",
-                "percentage": round(float(p.percentage)),
-                "state": translate_state(_state_str(p.state)),
-                "state_en": _state_str(p.state),
-                "kind": kind,
-                "level": _level_pt(level),
-                "level_en": level,
-                "native_path": native,
-                "serial": (p.serial or "").strip(),
-                "icon": icon_for(round(float(p.percentage)),
-                                 _state_str(p.state), level),
-                "time_empty": int(p.time_to_empty or 0),
-                "time_full": int(p.time_to_full or 0),
-            })
+                p = dev.props
+                # pula o agregado DisplayDevice e fontes AC
+                obj_path = dev.get_object_path() or ""
+                if "DisplayDevice" in obj_path:
+                    continue
+                model = (p.model or "").strip()
+                vendor = (p.vendor or "").strip()
+                native = (p.native_path or "").strip()
+                kind = _kind_str(p.kind) or ""
+                text = f"{vendor} {model}".strip()
+                is_gamepad = (
+                    "gaming" in kind.lower()
+                    or "gip" in native.lower()
+                    or any(k in text.lower() for k in ("xbox", "gamepad", "controller"))
+                )
+                if not is_gamepad:
+                    continue
+                try:
+                    import gi
+                    gi.require_version("UPowerGlib", "1.0")
+                    from gi.repository import UPowerGlib
+                    level = UPowerGlib.Device.level_to_string(p.battery_level)
+                except Exception:  # noqa: BLE001
+                    level = str(p.battery_level)
+                out.append({
+                    "device": text or native or _("controle"),
+                    "percentage": round(float(p.percentage)),
+                    "state": translate_state(_state_str(p.state)),
+                    "state_en": _state_str(p.state),
+                    "kind": kind,
+                    "level": _level_pt(level),
+                    "level_en": level,
+                    "native_path": native,
+                    "serial": (p.serial or "").strip(),
+                    "icon": icon_for(round(float(p.percentage)),
+                                     _state_str(p.state), level),
+                    "time_empty": int(p.time_to_empty or 0),
+                    "time_full": int(p.time_to_full or 0),
+                })
+            except Exception:  # noqa: BLE001 (um dispositivo ruim não derruba os outros)
+                continue
         return out
     except Exception as e:  # noqa: BLE001
         return [{"device": _("UPower indisponível"), "percentage": -1,

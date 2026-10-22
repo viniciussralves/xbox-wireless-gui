@@ -1,5 +1,7 @@
 """Funções puras de main.py (sem display)."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import unittest
 
@@ -30,6 +32,9 @@ class TestPure(unittest.TestCase):
         self.assertEqual(main.bat_time_text(
             {"state_en": "fully-charged", "state": "Carregada"}),
             "carregado")
+        self.assertEqual(main.bat_time_text(
+            {"state_en": "fully-charged", "state": "Carregada",
+             "time_full": 600}), "carregado")
         self.assertEqual(main.bat_time_text(
             {"state_en": "discharging", "state": "Descarregando"}),
             "Descarregando")

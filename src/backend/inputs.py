@@ -78,19 +78,28 @@ def apply_abs(state: dict, code: int, value: int,
         from evdev import ecodes
     except ImportError:
         return False
+    stick_codes = (ecodes.ABS_X, ecodes.ABS_Y, ecodes.ABS_RX, ecodes.ABS_RY)
+    gas = getattr(ecodes, "ABS_GAS", None)
+    brake = getattr(ecodes, "ABS_BRAKE", None)
+    trigger_codes = (ecodes.ABS_Z, ecodes.ABS_RZ, gas, brake)
     lo, hi = limits.get(code, (0, 0))
+    if hi <= lo:
+        if code in stick_codes:
+            lo, hi = -32768, 32767
+        elif code in trigger_codes:
+            lo, hi = 0, 255
     if code == ecodes.ABS_X:
-        state["lx"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
+        state["lx"] = _norm_stick(value, lo, hi, deadzone)
     elif code == ecodes.ABS_Y:
-        state["ly"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
+        state["ly"] = _norm_stick(value, lo, hi, deadzone)
     elif code == ecodes.ABS_RX:
-        state["rx"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
+        state["rx"] = _norm_stick(value, lo, hi, deadzone)
     elif code == ecodes.ABS_RY:
-        state["ry"] = _norm_stick(value, lo or -32768, hi or 32767, deadzone)
-    elif code == ecodes.ABS_Z:
-        state["lt"] = _norm_trigger(value, lo or 0, hi or 255)
-    elif code == ecodes.ABS_RZ:
-        state["rt"] = _norm_trigger(value, lo or 0, hi or 255)
+        state["ry"] = _norm_stick(value, lo, hi, deadzone)
+    elif code in (ecodes.ABS_Z, gas):
+        state["lt"] = _norm_trigger(value, lo, hi)
+    elif code in (ecodes.ABS_RZ, brake):
+        state["rt"] = _norm_trigger(value, lo, hi)
     elif code == ecodes.ABS_HAT0X:
         state["hat"] = (int(value), state["hat"][1])
     elif code == ecodes.ABS_HAT0Y:
@@ -146,18 +155,27 @@ def list_devices() -> list[dict]:
         return []
     out = []
     for p in rumble.find_gamepads():
+        d = None
         try:
             d = InputDevice(p["path"])
             limits: dict[int, tuple[int, int]] = {}
             for code, info in d.capabilities(absinfo=True).get(ecodes.EV_ABS, []):
                 limits[code] = (info.min, info.max)
             out.append({"path": p["path"], "name": p["name"],
+                        "phys": getattr(d, "phys", "") or "",
                         "has_rumble": p.get("has_rumble", False),
                         "limits": limits})
         except OSError:
             out.append({"path": p["path"], "name": p["name"],
+                        "phys": getattr(d, "phys", "") if d is not None else "",
                         "has_rumble": p.get("has_rumble", False),
                         "limits": {}})
+        finally:
+            if d is not None:
+                try:
+                    d.close()
+                except OSError:
+                    pass
     # real primeiro, virtual 360 por último (mesma regra do rumble)
-    out.sort(key=lambda p: ("360" in p["name"], p["path"]))
+    out.sort(key=lambda p: (rumble.is_virtual_pad(p["name"]), p["path"]))
     return out

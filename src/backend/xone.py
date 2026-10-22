@@ -12,12 +12,9 @@ _LED_ID_RE = re.compile(r"^[A-Za-z0-9._:+\-]+$")
 _SYSFS_PAIRING_PREFIX = "/sys/bus/usb/drivers/xone-dongle/"
 _SYSFS_LEDS_PREFIX = "/sys/class/leds/"
 
-# Ações polkit declaradas em data/org.xboxwireless.gui.policy.
-# O backend usa `pkexec sh -c` (ação padrão org.freedesktop.policykit.exec),
-# que funciona sem helper instalado; as ações dedicadas abaixo documentam
-# a intenção e permitem à distro amarrar um helper via anotações exec.*.
-POLKIT_PAIRING_ACTION = "com.github.xbox-wireless-gui.pairing"
-POLKIT_LED_ACTION = "com.github.xbox-wireless-gui.led"
+# Modos válidos do enum gip_led_mode do xone (driver/common.c e
+# bus/protocol.h): off, on, blink fast/normal/slow, fade slow/fast.
+VALID_LED_MODES = ("0", "1", "2", "3", "4", "8", "9")
 
 
 def list_dongles() -> list[str]:
@@ -60,11 +57,53 @@ def _valid_pairing_file(pf: str | None) -> str | None:
 
 def _run_pkexec_shell(snippet: str) -> subprocess.CompletedProcess:
     # snippet já vem com valores validados/quotados pelo chamador.
-    # Usa a ação padrão org.freedesktop.policykit.exec (sem --action-id:
-    # o pkexec atual não aceita esse flag; ação customizada exigiria
-    # helper com anotações exec.path/argv1). Ver POLKIT_*_ACTION acima.
-    return subprocess.run(["pkexec", "sh", "-c", snippet],
+    # Usa a ação padrão org.freedesktop.policykit.exec: o pkexec atual
+    # não aceita --action-id; um helper com anotações exec.* seria o
+    # próximo passo para autorizações granulares.
+    pkexec = _pkexec()
+    if not pkexec:
+        raise FileNotFoundError("pkexec")
+    return subprocess.run([pkexec, "sh", "-c", snippet],
                           capture_output=True, text=True, timeout=60)
+
+
+def _pkexec() -> str | None:
+    for p in ("/usr/bin/pkexec", "/bin/pkexec"):
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
+HELPER = "/usr/libexec/xbox-wireless-gui-helper"
+
+
+def _helper() -> str | None:
+    """Helper root-owned instalado pelo RPM (não o checkout do usuário)."""
+    if not (os.path.isfile(HELPER) and os.access(HELPER, os.X_OK)):
+        return None
+    try:
+        st = os.stat(HELPER)
+    except OSError:
+        return None
+    if st.st_uid != 0 or st.st_mode & 0o022:
+        return None
+    return HELPER
+
+
+def _run_helper(*args: str) -> subprocess.CompletedProcess | None:
+    helper = _helper()
+    pkexec = _pkexec()
+    if not helper or not pkexec:
+        return None
+    try:
+        return subprocess.run([pkexec, helper, *args],
+                              capture_output=True, text=True, timeout=60)
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+
+
+def _helper_error(r: subprocess.CompletedProcess) -> str:
+    return (r.stderr or r.stdout or f"helper saiu {r.returncode}").strip()
 
 
 def set_pairing(enable: bool, dongle: str | None = None) -> tuple[bool, str]:
@@ -78,9 +117,14 @@ def set_pairing(enable: bool, dongle: str | None = None) -> tuple[bool, str]:
             f.write(val + "\n")
         return True, _("pairing=ativado") if enable else _("pairing=desativado")
     except PermissionError:
-        pass  # cai para pkexec abaixo
+        pass  # cai para o helper/pkexec abaixo
     except OSError as e:
         return False, _("falha ao escrever pairing: {e}").format(e=e)
+    r = _run_helper("pairing", "on" if enable else "off", pf)
+    if r is not None:
+        if r.returncode == 0:
+            return True, _("pairing=ativado") if enable else _("pairing=desativado")
+        return False, _helper_error(r)
     cmd = f"echo {val} > {shlex.quote(pf)}"
     try:
         r = _run_pkexec_shell(cmd)
@@ -111,10 +155,11 @@ def list_controllers() -> list[dict]:
 
 
 def set_led(cid: str, mode: str, brightness: str) -> tuple[bool, str]:
-    if not cid or not _LED_ID_RE.match(cid):
+    if not cid or not _LED_ID_RE.match(cid) or ".." in cid or cid in (".", ".."):
         return False, _("{cid} inválido").format(cid=cid)
-    if mode not in ("0", "1", "2"):
-        return False, _("mode {mode} inválido (use 0-2)").format(mode=mode)
+    if mode not in VALID_LED_MODES:
+        return False, _("mode {mode} inválido (use {modes})").format(
+            mode=mode, modes=", ".join(VALID_LED_MODES))
     try:
         bval = int(brightness)
     except (ValueError, TypeError):
@@ -144,6 +189,11 @@ def set_led(cid: str, mode: str, brightness: str) -> tuple[bool, str]:
         pass
     except OSError as e:
         return False, _("falha ao escrever LED: {e}").format(e=e)
+    r = _run_helper("led", cid, mode, str(bval))
+    if r is not None:
+        if r.returncode == 0:
+            return True, _("LED atualizado")
+        return False, _helper_error(r)
     cmd = (f"echo {shlex.quote(mode)} > {shlex.quote(base + '/mode')}; "
            f"echo {shlex.quote(str(bval))} > {shlex.quote(base + '/brightness')}")
     try:

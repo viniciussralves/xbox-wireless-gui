@@ -6,699 +6,801 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-18 15:27-0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Project-Id-Version: xbox-wireless-gui 0.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/viniciussralves/xbox-wireless-gui/issues\n"
+"POT-Creation-Date: 2026-10-21 21:24-0300\n"
+"PO-Revision-Date: 2026-10-21 21:00-0300\n"
+"Last-Translator: theone <viniciussralves92@gmail.com>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: main.py:101 main.py:801
+#: src/main.py:57
+#, python-brace-format
+msgid "{t} restantes"
+msgstr ""
+
+#: src/main.py:59
+msgid "carregado"
+msgstr ""
+
+#: src/main.py:61
+#, python-brace-format
+msgid "cheio em {t}"
+msgstr ""
+
+#: src/main.py:68
+msgid "Desligado"
+msgstr ""
+
+#: src/main.py:69
+msgid "Ligado"
+msgstr ""
+
+#: src/main.py:70
+msgid "Piscar rápido"
+msgstr ""
+
+#: src/main.py:71
+msgid "Piscar normal"
+msgstr ""
+
+#: src/main.py:72
+msgid "Piscar lento"
+msgstr ""
+
+#: src/main.py:73
+msgid "Fade lento"
+msgstr ""
+
+#: src/main.py:74
+msgid "Fade rápido"
+msgstr ""
+
+#. Grupo bateria
+#: src/main.py:114 src/main.py:858
 msgid "Bateria"
 msgstr ""
 
-#: main.py:101
+#: src/main.py:114 src/main.py:220
 msgid "via UPower"
 msgstr ""
 
-#: main.py:128
+#: src/main.py:136
+msgid "Modo do LED (preserva o atual por padrão)"
+msgstr ""
+
+#: src/main.py:144
 msgid "Aplicar"
 msgstr ""
 
-#: main.py:138
+#: src/main.py:155
 msgid "Brilho do LED Xbox"
 msgstr ""
 
-#: main.py:139
+#: src/main.py:156
 #, python-brace-format
 msgid "mode atual: {mode} • ajuste modo + brilho e clique em Aplicar"
 msgstr ""
 
-#: main.py:146
+#. --- vibração ---
+#: src/main.py:163
 msgid "Vibrar"
 msgstr ""
 
-#: main.py:150 main.py:877
+#: src/main.py:167 src/main.py:935
 msgid "Teste de vibração"
 msgstr ""
 
-#: main.py:151
+#: src/main.py:168
 msgid "testa a vibração via evdev (ff-rumble)"
 msgstr ""
 
-#: main.py:158
+#. --- testador de botões (desenho do controle) ---
+#: src/main.py:175
 msgid "Testar botões"
 msgstr ""
 
-#: main.py:163 main.py:246 main.py:256 main.py:887
+#: src/main.py:180 src/main.py:279 src/main.py:289 src/main.py:945
 msgid "Testador de botões"
 msgstr ""
 
-#: main.py:164
+#: src/main.py:181
 msgid "abre o desenho do controle ao vivo"
 msgstr ""
 
-#: main.py:171
+#: src/main.py:188
 msgid "Desconectar"
 msgstr ""
 
-#: main.py:175
+#: src/main.py:192
 msgid "Bluetooth"
 msgstr ""
 
-#: main.py:176
+#: src/main.py:193
 msgid "desconecta este controle (pode parear de novo depois)"
 msgstr ""
 
-#: main.py:188
+#: src/main.py:205
 msgid "sem dados"
 msgstr ""
 
-#: main.py:199 main.py:1338
+#. evita "Descarregando • nível normal • Descarregando"
+#: src/main.py:216 src/main.py:1466
 #, python-brace-format
 msgid "nível {lvl}"
 msgstr ""
 
-#: main.py:257
+#: src/main.py:290
 msgid "aperte os botões do controle"
 msgstr ""
 
-#: main.py:264
+#: src/main.py:292
+msgid "Procurar gamepads novamente"
+msgstr ""
+
+#: src/main.py:298
+msgid "Gamepad evdev"
+msgstr ""
+
+#: src/main.py:301
 msgid "Gamepad"
 msgstr ""
 
-#: main.py:277 main.py:491
+#: src/main.py:314 src/main.py:545
 msgid "Nenhum botão pressionado"
 msgstr ""
 
-#: main.py:297
+#: src/main.py:334
 msgid "Ignora tremores pequenos dos analógicos"
 msgstr ""
 
-#: main.py:299
+#: src/main.py:336
 msgid "Zona morta"
 msgstr ""
 
-#: main.py:300
+#: src/main.py:337
 msgid "vale só para o desenho do testador"
 msgstr ""
 
-#: main.py:314
+#: src/main.py:351
 msgid "Mapeamento"
 msgstr ""
 
-#: main.py:315
+#: src/main.py:352
 msgid "código evdev → botão do desenho"
 msgstr ""
 
-#: main.py:325
+#: src/main.py:362
 msgid ""
 "Dica: o dispositivo virtual “X-Box 360 pad” espelha o real — teste no "
 "“Microsoft Xbox Controller”."
 msgstr ""
 
-#: main.py:364
+#: src/main.py:402
 msgid "Nenhum gamepad evdev encontrado (python3-evdev instalado?)"
 msgstr ""
 
-#: main.py:409
+#: src/main.py:447
 msgid "python3-evdev não instalado"
 msgstr ""
 
-#: main.py:435
+#: src/main.py:472
 #, python-brace-format
 msgid "Lendo {name} — aperte os botões…"
 msgstr ""
 
-#: main.py:438
+#: src/main.py:476
 #, python-brace-format
-msgid "Sem permissão em {path} (grupo input ou udev rule)"
+msgid "Sem permissão em {path} (uaccess/udev ou grupo xboxwireless)"
 msgstr ""
 
-#: main.py:440
+#: src/main.py:478
 #, python-brace-format
 msgid "Falha ao abrir {path}: {e}"
 msgstr ""
 
-#: main.py:454
+#: src/main.py:493
 msgid "Dispositivo desconectado"
 msgstr ""
 
-#: main.py:477
+#. noqa: BLE001
+#: src/main.py:522
 #, python-brace-format
 msgid "Erro de leitura: {e}"
 msgstr ""
 
-#: main.py:484
+#: src/main.py:537
 #, python-brace-format
 msgid "Pressionados: {n}"
 msgstr ""
 
-#: main.py:717
+#: src/main.py:543
+#, python-brace-format
+msgid "D-Pad: x={x:+d} y={y:+d}"
+msgstr ""
+
+#: src/main.py:774
 msgid "Sobre"
 msgstr ""
 
-#: main.py:721
+#: src/main.py:778
 msgid "Atualizar"
 msgstr ""
 
-#: main.py:739
+#: src/main.py:796
 msgid "Adaptador Wireless"
 msgstr ""
 
-#: main.py:740
+#: src/main.py:797
 msgid "Dongle Microsoft 045e:02e6 / 02d1 via driver xone (ou xow legado)"
 msgstr ""
 
-#: main.py:741
+#: src/main.py:798
 msgid "Detectando…"
 msgstr ""
 
-#: main.py:748
+#: src/main.py:805
 msgid "Qual dongle usar para pairing/LED"
 msgstr ""
 
-#: main.py:751
+#: src/main.py:808
 msgid "Dongle"
 msgstr ""
 
-#: main.py:757
+#: src/main.py:814
 msgid "Modo pairing"
 msgstr ""
 
-#: main.py:758
+#: src/main.py:815
 msgid "dongle visível para novos controles"
 msgstr ""
 
-#: main.py:763 main.py:1104
+#: src/main.py:820 src/main.py:1197 src/main.py:1267 src/main.py:1279
 msgid "Ativar pairing (xow)"
 msgstr ""
 
-#: main.py:769
+#: src/main.py:826
 msgid "Pareamento manual"
 msgstr ""
 
-#: main.py:778
+#: src/main.py:835
 msgid "Controles"
 msgstr ""
 
-#: main.py:779
+#: src/main.py:836
 msgid "Conectados ao dongle • expanda para LED e vibração"
 msgstr ""
 
-#: main.py:782
+#: src/main.py:839
 msgid "Nenhum controle conectado"
 msgstr ""
 
-#: main.py:783
+#: src/main.py:840
 msgid "Ative o pairing e segure o botão Xbox até piscar rápido."
 msgstr ""
 
-#: main.py:784
+#: src/main.py:841
 msgid "Ativar pairing agora"
 msgstr ""
 
-#: main.py:806
+#. Grupo sistema
+#: src/main.py:863
 msgid "Sistema e firmware"
 msgstr ""
 
-#: main.py:807
+#: src/main.py:864
 msgid "Firmware do dongle"
 msgstr ""
 
-#: main.py:812 main.py:985
+#: src/main.py:869 src/main.py:1062
 msgid "Instalar"
 msgstr ""
 
-#: main.py:815
+#: src/main.py:872
 msgid "Roda o script oficial com pkexec"
 msgstr ""
 
-#: main.py:818
+#: src/main.py:875
 msgid "Copiar comando de firmware (xone/xow)"
 msgstr ""
 
-#: main.py:837
+#: src/main.py:894
 msgid "Duração da vibração"
 msgstr ""
 
-#: main.py:838
+#: src/main.py:895
 msgid "milissegundos por teste"
 msgstr ""
 
-#: main.py:850
+#: src/main.py:907
 msgid "Intensidade da vibração"
 msgstr ""
 
-#: main.py:851
+#: src/main.py:908
 msgid "vale para os dois motores"
 msgstr ""
 
-#: main.py:857
+#. Permissões (udev + grupo dedicado)
+#: src/main.py:914
 msgid "Permissões"
 msgstr ""
 
-#: main.py:862
+#: src/main.py:919
 msgid "Corrigir"
 msgstr ""
 
-#: main.py:865
-msgid "Instala a regra udev e ajusta o grupo input"
+#: src/main.py:923
+msgid "Instala a regra udev e ajusta o grupo xboxwireless"
 msgstr ""
 
-#: main.py:873
+#: src/main.py:931
 msgid "Vibrar todos"
 msgstr ""
 
-#: main.py:878
+#: src/main.py:936
 msgid "envia rumble a todos os gamepads Xbox"
 msgstr ""
 
-#: main.py:883
+#: src/main.py:941
 msgid "Abrir testador"
 msgstr ""
 
-#: main.py:888
+#: src/main.py:946
 msgid "desenho do controle com resposta ao vivo"
 msgstr ""
 
-#: main.py:894
+#. Atualizações
+#: src/main.py:952
 msgid "Atualizações"
 msgstr ""
 
-#: main.py:895
+#: src/main.py:953 src/main.py:1168
 msgid "Verificar"
 msgstr ""
 
-#: main.py:949
+#: src/main.py:1023
 msgid "Gerencie o Xbox Wireless Adapter e controles no Fedora (xone + xow)."
 msgstr ""
 
-#: main.py:961
+#: src/main.py:1038
 #, python-brace-format
 msgid "Comando copiado: {cmd}"
 msgstr ""
 
-#: main.py:963
+#. noqa: BLE001
+#: src/main.py:1040
 #, python-brace-format
 msgid "Copie manualmente: {cmd} ({e})"
 msgstr ""
 
-#: main.py:973
+#: src/main.py:1050
 #, python-brace-format
 msgid "firmware ausente — {d}"
 msgstr ""
 
-#: main.py:981
+#: src/main.py:1058
 msgid "Instalar firmware do dongle?"
 msgstr ""
 
-#: main.py:982
+#: src/main.py:1059
 msgid ""
 "Roda o script oficial com pkexec. O firmware é sujeito aos Termos de Uso da "
 "Microsoft, precisa de internet e pode levar minutos."
 msgstr ""
 
-#: main.py:984
+#: src/main.py:1061
 msgid "Cancelar"
 msgstr ""
 
-#: main.py:1063
+#: src/main.py:1146
 #, python-brace-format
 msgid "nova versão disponível: {t}"
 msgstr ""
 
-#: main.py:1064
+#: src/main.py:1147
 msgid "Abrir"
 msgstr ""
 
-#: main.py:1065
+#: src/main.py:1148
 #, python-brace-format
 msgid "Nova versão {t} disponível"
 msgstr ""
 
-#: main.py:1084
+#: src/main.py:1170
 msgid "você já está na última versão"
 msgstr ""
 
-#: main.py:1085
+#: src/main.py:1171
 msgid "Você já está na última versão"
 msgstr ""
 
-#: main.py:1089
+#: src/main.py:1173
+msgid "não foi possível verificar atualizações"
+msgstr ""
+
+#: src/main.py:1174
+msgid "Não foi possível verificar atualizações"
+msgstr ""
+
+#: src/main.py:1176
+msgid "nenhum release publicado ainda"
+msgstr ""
+
+#: src/main.py:1177
 msgid "Nenhum release publicado ainda"
 msgstr ""
 
-#: main.py:1109 main.py:1111
+#: src/main.py:1202 src/main.py:1204
 #, python-brace-format
 msgid "Pareando… {n}s"
 msgstr ""
 
-#: main.py:1145
+#: src/main.py:1240
 msgid "Driver xone • dongle conectado"
 msgstr ""
 
-#: main.py:1152
+#: src/main.py:1247
 #, python-brace-format
 msgid "{d} • pairing=ON (desde {h})"
 msgstr ""
 
-#: main.py:1156
+#: src/main.py:1251
 #, python-brace-format
 msgid "{d} • pairing=OFF"
 msgstr ""
 
-#: main.py:1165
+#: src/main.py:1260
 msgid "Driver xow (legado)"
 msgstr ""
 
-#: main.py:1168
+#: src/main.py:1263
 #, python-brace-format
 msgid "xow em pairing ({n}s restantes)"
 msgstr ""
 
-#: main.py:1171
+#: src/main.py:1266
 #, python-brace-format
 msgid "serviço ativo: {s}"
 msgstr ""
 
-#: main.py:1176
+#: src/main.py:1275
 msgid "Nenhum dongle detectado"
 msgstr ""
 
-#: main.py:1177
+#: src/main.py:1276
 msgid "plugue o adaptador 045e:02e6/02d1"
 msgstr ""
 
-#: main.py:1178
+#: src/main.py:1281
 msgid "Adaptador não encontrado"
 msgstr ""
 
-#: main.py:1265
+#: src/main.py:1394
 #, python-brace-format
 msgid "Controle {n}"
 msgstr ""
 
-#: main.py:1266
+#: src/main.py:1395
 #, python-brace-format
 msgid "{cid} • mode={m} brilho={b}/{mx}"
 msgstr ""
 
-#: main.py:1282 main.py:1288
+#: src/main.py:1412
 msgid " (virtual)"
 msgstr ""
 
-#: main.py:1350
+#: src/main.py:1478
 msgid "Sem dados de bateria"
 msgstr ""
 
-#: main.py:1351
+#: src/main.py:1479
 msgid "UPower não reportou nenhum controle"
 msgstr ""
 
-#: main.py:1368
+#: src/main.py:1524
 msgid " • ligue o controle agora"
 msgstr ""
 
-#: main.py:1375
+#: src/main.py:1528
 msgid "Sem driver para parear"
 msgstr ""
 
-#: main.py:1388 main.py:1403
+#: src/main.py:1541 src/main.py:1560
 msgid "Nenhum gamepad evdev encontrado"
 msgstr ""
 
-#: backend/battery.py:22
+#: src/backend/battery.py:22
 msgid "Carregando"
 msgstr ""
 
-#: backend/battery.py:23
+#: src/backend/battery.py:23
 msgid "Descarregando"
 msgstr ""
 
-#: backend/battery.py:24
+#: src/backend/battery.py:24
 msgid "Vazia"
 msgstr ""
 
-#: backend/battery.py:25 backend/battery.py:26 backend/battery.py:27
+#: src/backend/battery.py:25 src/backend/battery.py:26
+#: src/backend/battery.py:27
 msgid "Carregada"
 msgstr ""
 
-#: backend/battery.py:28
+#: src/backend/battery.py:28
 msgid "Carga pendente"
 msgstr ""
 
-#: backend/battery.py:29
+#: src/backend/battery.py:29
 msgid "Descarga pendente"
 msgstr ""
 
-#: backend/battery.py:30
+#: src/backend/battery.py:30
 msgid "Desconhecida"
 msgstr ""
 
-#: backend/battery.py:60
+#: src/backend/battery.py:60
 msgid "desconhecido"
 msgstr ""
 
-#: backend/battery.py:62 backend/battery.py:63
+#: src/backend/battery.py:62 src/backend/battery.py:63
 msgid "baixo"
 msgstr ""
 
-#: backend/battery.py:64
+#: src/backend/battery.py:64
 msgid "crítico"
 msgstr ""
 
-#: backend/battery.py:65
+#: src/backend/battery.py:65
 msgid "normal"
 msgstr ""
 
-#: backend/battery.py:66
+#: src/backend/battery.py:66
 msgid "alto"
 msgstr ""
 
-#: backend/battery.py:67
+#: src/backend/battery.py:67
 msgid "cheio"
 msgstr ""
 
-#: backend/battery.py:145
+#: src/backend/battery.py:130
+msgid "controle"
+msgstr ""
+
+#. noqa: BLE001
+#: src/backend/battery.py:148
 msgid "UPower indisponível"
 msgstr ""
 
-#: backend/bluetooth.py:38
+#: src/backend/bluetooth.py:45
 msgid "dispositivo não é Bluetooth (sem MAC no phys)"
 msgstr ""
 
-#: backend/bluetooth.py:41
+#: src/backend/bluetooth.py:48
 msgid "bluetoothctl não encontrado"
 msgstr ""
 
-#: backend/bluetooth.py:46
+#: src/backend/bluetooth.py:53
 msgid "timeout no bluetoothctl"
 msgstr ""
 
-#: backend/bluetooth.py:48
+#: src/backend/bluetooth.py:55
 #, python-brace-format
 msgid "falha ao chamar bluetoothctl: {e}"
 msgstr ""
 
-#: backend/bluetooth.py:51
+#: src/backend/bluetooth.py:58
 #, python-brace-format
 msgid "{mac} desconectado"
 msgstr ""
 
-#: backend/bluetooth.py:52
+#: src/backend/bluetooth.py:59
 #, python-brace-format
 msgid "bluetoothctl saiu {c}"
 msgstr ""
 
-#: backend/firmware.py:63
+#: src/backend/firmware.py:101
 #, python-brace-format
 msgid "instalado: {files}"
 msgstr ""
 
-#: backend/firmware.py:65
-msgid "nenhum binário xone_dongle_*.bin/xow_dongle.bin em /usr/lib/firmware"
+#: src/backend/firmware.py:103
+#, python-brace-format
+msgid "nenhum binário de firmware para {driver}"
 msgstr ""
 
-#: backend/firmware.py:67
+#: src/backend/firmware.py:106
 #, python-brace-format
 msgid "script: {s}"
 msgstr ""
 
-#: backend/firmware.py:69
-msgid "script xone/xow-get-firmware.sh não está no PATH"
+#: src/backend/firmware.py:108
+msgid "script xone/xow-get-firmware.sh não está no PATH seguro"
 msgstr ""
 
-#: backend/firmware.py:79
+#: src/backend/firmware.py:118
 msgid "script de firmware não encontrado (instale o xone/xow primeiro)"
 msgstr ""
 
-#: backend/firmware.py:81 backend/permissions.py:127 backend/xone.py:93
+#: src/backend/firmware.py:121 src/backend/permissions.py:237
+#: src/backend/xone.py:137 src/backend/xow.py:34
 msgid "pkexec não encontrado"
 msgstr ""
 
-#: backend/firmware.py:86
+#: src/backend/firmware.py:126
 msgid "timeout instalando firmware (>10min)"
 msgstr ""
 
-#: backend/firmware.py:88
+#: src/backend/firmware.py:128
 #, python-brace-format
 msgid "falha ao chamar firmware: {e}"
 msgstr ""
 
-#: backend/firmware.py:95
+#: src/backend/firmware.py:135
 #, python-brace-format
 msgid "firmware instalado: {files}"
 msgstr ""
 
-#: backend/firmware.py:97
-msgid "script concluiu"
+#: src/backend/firmware.py:137
+#, python-brace-format
+msgid ""
+"script concluiu, mas nenhum firmware de {driver} apareceu em /usr/lib/"
+"firmware"
 msgstr ""
 
-#: backend/firmware.py:98
+#: src/backend/firmware.py:140
 #, python-brace-format
 msgid "script saiu com código {c}"
 msgstr ""
 
-#: backend/permissions.py:71
+#: src/backend/permissions.py:125
 msgid "sem gamepad para testar"
 msgstr ""
 
-#: backend/permissions.py:80
+#: src/backend/permissions.py:134
 msgid "python3-evdev ausente (leitura não testada)"
 msgstr ""
 
-#: backend/permissions.py:91
+#: src/backend/permissions.py:148
 msgid "regra udev ausente"
 msgstr ""
 
-#: backend/permissions.py:93
-msgid "usuário fora do grupo input"
+#: src/backend/permissions.py:150
+#, python-brace-format
+msgid "usuário fora do grupo {g}"
 msgstr ""
 
-#: backend/permissions.py:95
+#: src/backend/permissions.py:152
+#, python-brace-format
+msgid "sessão sem o grupo {g} (entre de novo)"
+msgstr ""
+
+#: src/backend/permissions.py:155
 #, python-brace-format
 msgid "LED sem escrita ({n})"
 msgstr ""
 
-#: backend/permissions.py:97
+#: src/backend/permissions.py:157
 #, python-brace-format
 msgid "pairing sem escrita ({n})"
 msgstr ""
 
-#: backend/permissions.py:99
+#: src/backend/permissions.py:159
 #, python-brace-format
 msgid "evdev sem leitura ({info})"
 msgstr ""
 
-#: backend/permissions.py:104
+#: src/backend/permissions.py:165
 msgid "tudo certo"
 msgstr ""
 
-#: backend/permissions.py:125
-msgid "arquivo da regra não encontrado na instalação"
-msgstr ""
-
-#: backend/permissions.py:142
-msgid "timeout instalando a regra"
-msgstr ""
-
-#: backend/permissions.py:144
+#: src/backend/permissions.py:214
 #, python-brace-format
-msgid "falha ao chamar pkexec: {e}"
+msgid " (entre de novo no grupo {g} no próximo login)"
 msgstr ""
 
-#: backend/permissions.py:147
-#, python-brace-format
-msgid "pkexec saiu {c}"
+#: src/backend/permissions.py:217
+msgid " (saia e entre de novo para o grupo valer)"
 msgstr ""
 
-#: backend/permissions.py:149
-msgid " (entre de novo no grupo input no próximo login)"
-msgstr ""
-
-#: backend/permissions.py:151
+#: src/backend/permissions.py:221
 msgid "permissões corrigidas"
 msgstr ""
 
-#: backend/permissions.py:152
+#: src/backend/permissions.py:222
 #, python-brace-format
 msgid "regra instalada; pendente: {d}"
 msgstr ""
 
-#: backend/rumble.py:44
+#: src/backend/permissions.py:234
+msgid "usuário inválido para o grupo"
+msgstr ""
+
+#: src/backend/permissions.py:244 src/backend/permissions.py:270
+msgid "timeout instalando a regra"
+msgstr ""
+
+#: src/backend/permissions.py:246 src/backend/permissions.py:272
+#, python-brace-format
+msgid "falha ao chamar pkexec: {e}"
+msgstr ""
+
+#: src/backend/permissions.py:249 src/backend/permissions.py:275
+#, python-brace-format
+msgid "pkexec saiu {c}"
+msgstr ""
+
+#: src/backend/rumble.py:69
 #, python-brace-format
 msgid "vibração enviada em {path}"
 msgstr ""
 
-#: backend/rumble.py:46
+#: src/backend/rumble.py:71
 #, python-brace-format
-msgid "sem permissão em {path} (adicione udev rule input ou rode com sudo)"
+msgid "sem permissão em {path} (regra udev/uaccess ou grupo xboxwireless)"
 msgstr ""
 
-#: backend/xone.py:74
+#: src/backend/xone.py:113
 msgid "arquivo pairing não encontrado (dongle desplugado?)"
 msgstr ""
 
-#: backend/xone.py:79 backend/xone.py:88
+#: src/backend/xone.py:118 src/backend/xone.py:126 src/backend/xone.py:132
 msgid "pairing=ativado"
 msgstr ""
 
-#: backend/xone.py:79 backend/xone.py:88
+#: src/backend/xone.py:118 src/backend/xone.py:126 src/backend/xone.py:132
 msgid "pairing=desativado"
 msgstr ""
 
-#: backend/xone.py:83
+#: src/backend/xone.py:122
 #, python-brace-format
 msgid "falha ao escrever pairing: {e}"
 msgstr ""
 
-#: backend/xone.py:91
+#: src/backend/xone.py:135
 msgid "timeout no pkexec"
 msgstr ""
 
-#: backend/xone.py:115
+#: src/backend/xone.py:159
 #, python-brace-format
 msgid "{cid} inválido"
 msgstr ""
 
-#: backend/xone.py:117
+#: src/backend/xone.py:161
 #, python-brace-format
-msgid "mode {mode} inválido (use 0-2)"
+msgid "mode {mode} inválido (use {modes})"
 msgstr ""
 
-#: backend/xone.py:121
+#: src/backend/xone.py:166
 #, python-brace-format
 msgid "brilho {brilho} inválido"
 msgstr ""
 
-#: backend/xone.py:126
+#: src/backend/xone.py:171
 #, python-brace-format
 msgid "{cid} não existe"
 msgstr ""
 
-#: backend/xone.py:132
+#: src/backend/xone.py:177
 #, python-brace-format
 msgid "brilho fora da faixa 0-{mx}"
 msgstr ""
 
-#: backend/xone.py:135
+#: src/backend/xone.py:180
 msgid "brilho fora da faixa"
 msgstr ""
 
-#: backend/xone.py:142 backend/xone.py:152
+#: src/backend/xone.py:187 src/backend/xone.py:195 src/backend/xone.py:202
 msgid "LED atualizado"
 msgstr ""
 
-#: backend/xone.py:146
+#: src/backend/xone.py:191
 #, python-brace-format
 msgid "falha ao escrever LED: {e}"
 msgstr ""
 
-#: backend/xow.py:28
+#: src/backend/xow.py:39
 msgid "xow em modo pairing (20s). Ligue o controle."
 msgstr ""

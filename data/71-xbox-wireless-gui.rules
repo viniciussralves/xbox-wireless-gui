@@ -1,9 +1,12 @@
-# Xbox Wireless GUI — permite ao grupo `input` gerenciar pairing e LEDs
-# sem pkexec a cada clique. Instalado por install_fix() (backend/permissions.py)
-# ou pelo RPM em /usr/lib/udev/rules.d.
+# Xbox Wireless GUI — permite ao grupo `xboxwireless` gerenciar pairing e LEDs
+# sem pkexec a cada clique. Instalado pelo RPM e por install_fix().
+# O grupo `input` NÃO é usado: ele também dá leitura a teclados.
 
-# LEDs dos controles (xone): escrita em mode/brightness para o grupo input
-ACTION=="add", SUBSYSTEM=="leds", KERNEL=="gip*", RUN+="/bin/sh -c 'chgrp input /sys%p/brightness /sys%p/mode 2>/dev/null; chmod g+w /sys%p/brightness /sys%p/mode 2>/dev/null'"
+# LEDs dos controles (xone): escrita em mode/brightness para o grupo dedicado
+ACTION=="add|change", SUBSYSTEM=="leds", KERNEL=="gip*", RUN+="/bin/sh -c 'chgrp xboxwireless /sys%p/brightness /sys%p/mode 2>/dev/null; chmod g+w /sys%p/brightness /sys%p/mode 2>/dev/null'"
 
-# Dongle xone: escrita no pairing para o grupo input
-ACTION=="add", DRIVER=="xone-dongle", RUN+="/bin/sh -c 'chgrp input /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null; chmod g+w /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null'"
+# Dongle xone: escrita no pairing
+ACTION=="add|change", DRIVER=="xone-dongle", RUN+="/bin/sh -c 'chgrp xboxwireless /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null; chmod g+w /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null'"
+
+# Gamepads: ACL do logind para o usuário da sessão (evdev sem grupo input)
+ACTION=="add|change", SUBSYSTEM=="input", ENV{ID_INPUT_JOYSTICK}=="1", TAG+="uaccess"

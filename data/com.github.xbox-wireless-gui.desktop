@@ -7,4 +7,4 @@ Terminal=false
 Type=Application
 Categories=Settings;HardwareSettings;
 StartupNotify=true
-StartupWMClass=xbox-wireless-gui
+StartupWMClass=com.github.xbox-wireless-gui

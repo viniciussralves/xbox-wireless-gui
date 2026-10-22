@@ -1,5 +1,7 @@
 """Cobertura backend (mocks): firmware/permissions/bluetooth/prefs/i18n/updates/inputs."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import unittest
 from unittest import mock
@@ -10,6 +12,43 @@ from backend import bluetooth, firmware, inputs, permissions, prefs, updates
 
 
 class TestFirmwareFull(unittest.TestCase):
+    def test_trusted_script_accepts_root_owned(self):
+        st = mock.Mock(st_uid=0, st_mode=0o755)
+        with mock.patch("os.path.realpath", return_value="/usr/bin/fw"), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("os.access", return_value=True), \
+             mock.patch("os.stat", return_value=st):
+            self.assertEqual(firmware._trusted_script("/usr/bin/fw"),
+                             "/usr/bin/fw")
+
+    def test_trusted_script_rejects_nonroot_and_errors(self):
+        with mock.patch("os.path.realpath", return_value="/usr/bin/fw"), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("os.access", return_value=True), \
+             mock.patch("os.stat", return_value=mock.Mock(st_uid=1000,
+                                                          st_mode=0o755)):
+            self.assertIsNone(firmware._trusted_script("/usr/bin/fw"))
+        with mock.patch("os.path.realpath", return_value="/usr/bin/fw"), \
+             mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("os.access", return_value=True), \
+             mock.patch("os.stat", side_effect=OSError("x")):
+            self.assertIsNone(firmware._trusted_script("/usr/bin/fw"))
+        with mock.patch("os.path.realpath", return_value="/usr/bin/fw"), \
+             mock.patch("os.path.isfile", return_value=False):
+            self.assertIsNone(firmware._trusted_script("/usr/bin/fw"))
+
+    def test_pkexec_fallback_and_unknown_driver(self):
+        with mock.patch("os.path.isfile", return_value=True), \
+             mock.patch("os.access", return_value=True):
+            self.assertEqual(firmware._pkexec(), "/usr/bin/pkexec")
+        with mock.patch("os.path.isfile", return_value=False):
+            self.assertIsNone(firmware._pkexec())
+        self.assertIsNone(firmware.script_for("nenhum"))
+        with mock.patch("os.path.isdir", return_value=False), \
+             mock.patch("backend.firmware.glob.glob") as g:
+            self.assertEqual(firmware.installed_files("xone"), [])
+            g.assert_not_called()
+
     def test_installed_dedup(self):
         def fake_glob(pat):
             if "xone_dongle" in pat and pat.startswith("/usr"):
@@ -36,30 +75,36 @@ class TestFirmwareFull(unittest.TestCase):
             st = firmware.status("xone")
             self.assertIn("a.bin", st["detail"])
 
-    def test_script_fallback(self):
-        # script do driver ausente -> usa o outro script do PATH
-        with mock.patch("shutil.which", side_effect=[None, "/xow-path"]):
-            self.assertEqual(firmware.script_for("xone"), "/xow-path")
+    def test_script_no_cross_driver_fallback(self):
+        # xone ausente não deve usar o script do xow
+        def fake_which(name):
+            return "/usr/bin/xow-get-firmware.sh" if name == "xow-get-firmware.sh" else None
+        with mock.patch("shutil.which", side_effect=fake_which), \
+             mock.patch("backend.firmware._trusted_script",
+                        side_effect=lambda p: p):
+            self.assertIsNone(firmware.script_for("xone"))
+            self.assertEqual(firmware.script_for("xow"),
+                             "/usr/bin/xow-get-firmware.sh")
 
     def test_install_branches(self):
         import subprocess as sp
         with mock.patch("backend.firmware.script_for", return_value=None):
             self.assertFalse(firmware.install("xone")[0])
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value=None):
+             mock.patch("backend.firmware._pkexec", return_value=None):
             self.assertFalse(firmware.install("xone")[0])
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+             mock.patch("backend.firmware._pkexec", return_value="/pk"), \
              mock.patch("backend.firmware.subprocess.run",
                         side_effect=sp.TimeoutExpired("x", 1)):
             self.assertFalse(firmware.install("xone")[0])
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+             mock.patch("backend.firmware._pkexec", return_value="/pk"), \
              mock.patch("backend.firmware.subprocess.run",
                         side_effect=OSError("x")):
             self.assertFalse(firmware.install("xone")[0])
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+             mock.patch("backend.firmware._pkexec", return_value="/pk"), \
              mock.patch("backend.firmware.subprocess.run",
                         return_value=mock.Mock(returncode=0, stdout="",
                                               stderr="")), \
@@ -69,15 +114,16 @@ class TestFirmwareFull(unittest.TestCase):
             self.assertTrue(ok)
             self.assertIn("x.bin", msg)
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+             mock.patch("backend.firmware._pkexec", return_value="/pk"), \
              mock.patch("backend.firmware.subprocess.run",
                         return_value=mock.Mock(returncode=0, stdout="",
                                               stderr="")), \
              mock.patch("backend.firmware.installed_files",
                         return_value=[]):
-            self.assertTrue(firmware.install("xone")[0])
+            # script saiu 0 mas o arquivo esperado não apareceu
+            self.assertFalse(firmware.install("xone")[0])
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+             mock.patch("backend.firmware._pkexec", return_value="/pk"), \
              mock.patch("backend.firmware.subprocess.run",
                         return_value=mock.Mock(returncode=3, stdout="",
                                               stderr="boom")):
@@ -85,7 +131,7 @@ class TestFirmwareFull(unittest.TestCase):
             self.assertFalse(ok)
             self.assertIn("boom", msg)
         with mock.patch("backend.firmware.script_for", return_value="/s"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+             mock.patch("backend.firmware._pkexec", return_value="/pk"), \
              mock.patch("backend.firmware.subprocess.run",
                         return_value=mock.Mock(returncode=3, stdout="",
                                               stderr="")):
@@ -152,56 +198,177 @@ class TestPermissionsFull(unittest.TestCase):
             ok, _ = permissions.evdev_readable()
             self.assertTrue(ok)
 
+    def test_user_group_missing_and_evdev_exception(self):
+        class G:
+            gr_name = "other"
+            gr_mem = []
+            gr_gid = 1
+
+        class P:
+            pw_name = "u"
+            pw_gid = 2
+
+        with mock.patch("backend.permissions.grp.getgrall",
+                        return_value=[G()]), \
+             mock.patch("backend.permissions.pwd.getpwuid",
+                        return_value=P()):
+            self.assertFalse(permissions._user_in_group("xboxwireless"))
+        with mock.patch("backend.rumble.find_gamepads",
+                        side_effect=RuntimeError("x")):
+            ok, msg = permissions.evdev_readable()
+        self.assertFalse(ok)
+        self.assertIn("x", msg)
+
+    def test_login_root_env_and_pkexec_fallback(self):
+        with mock.patch("backend.permissions.os.geteuid", return_value=0), \
+             mock.patch.dict(os.environ, {"SUDO_UID": "1000"}), \
+             mock.patch("backend.permissions.pwd.getpwuid",
+                        return_value=mock.Mock(pw_name="nomade")):
+            self.assertEqual(permissions._login_user(), "nomade")
+        with mock.patch("backend.permissions.os.path.isfile",
+                        return_value=False):
+            self.assertIsNone(permissions._pkexec())
+        with mock.patch("backend.permissions.os.path.isfile",
+                        return_value=True), \
+             mock.patch("backend.permissions.os.access",
+                        return_value=True):
+            self.assertEqual(permissions._pkexec(), "/usr/bin/pkexec")
+
+    def test_rule_source_installed_layout(self):
+        expected = "/usr/share/xbox-wireless-gui/71-xbox-wireless-gui.rules"
+        with mock.patch.object(
+                permissions, "__file__",
+                "/usr/share/xbox-wireless-gui/backend/permissions.py"), \
+             mock.patch("os.path.isfile",
+                        side_effect=lambda p: p == expected):
+            self.assertEqual(permissions._rule_source(), expected)
+
+    def test_helper_detection_and_finish(self):
+        with mock.patch("backend.permissions.os.path.isfile",
+                        return_value=True), \
+             mock.patch("backend.permissions.os.access",
+                        return_value=True), \
+             mock.patch("backend.permissions.os.stat",
+                        return_value=mock.Mock(st_uid=0, st_mode=0o755)):
+            self.assertEqual(permissions._helper(),
+                             permissions.HELPER)
+        with mock.patch("backend.permissions.os.path.isfile",
+                        return_value=True), \
+             mock.patch("backend.permissions.os.access",
+                        return_value=True), \
+             mock.patch("backend.permissions.os.stat",
+                        side_effect=OSError("x")):
+            self.assertIsNone(permissions._helper())
+        with mock.patch("backend.permissions.status",
+                        return_value={"ok": False, "detail": "x",
+                                      "in_control_group": True}):
+            ok, msg = permissions._finish_fix()
+        self.assertTrue(ok)
+        self.assertIn("saia", msg)
+
+    def test_install_fix_helper_errors(self):
+        import subprocess as sp
+        base = [
+            mock.patch("backend.permissions._login_user",
+                       return_value="nomade"),
+            mock.patch("backend.permissions._pkexec", return_value="/pk"),
+            mock.patch("backend.permissions._helper", return_value="/h"),
+        ]
+        for exc in (sp.TimeoutExpired("x", 1), OSError("x")):
+            with base[0], base[1], base[2], \
+                 mock.patch("backend.permissions.subprocess.run",
+                            side_effect=exc):
+                self.assertFalse(permissions.install_fix()[0])
+        with base[0], base[1], base[2], \
+             mock.patch("backend.permissions.subprocess.run",
+                        return_value=mock.Mock(returncode=1, stderr="bad",
+                                              stdout="")):
+            ok, msg = permissions.install_fix()
+        self.assertFalse(ok)
+        self.assertIn("bad", msg)
+
+    def test_install_fix_uses_helper(self):
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
+             mock.patch("backend.permissions._helper", return_value="/h"), \
+             mock.patch("backend.permissions.subprocess.run",
+                        return_value=mock.Mock(returncode=0, stdout="",
+                                              stderr="")) as run, \
+             mock.patch("backend.permissions._finish_fix",
+                        return_value=(True, "ok")):
+            self.assertTrue(permissions.install_fix()[0])
+        self.assertEqual(run.call_args[0][0],
+                         ["/pk", "/h", "permissions", "nomade"])
+
+    def test_install_fix_command_uses_control_group(self):
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
+             mock.patch("backend.permissions.subprocess.run",
+                        return_value=mock.Mock(returncode=0, stdout="",
+                                              stderr="")) as run, \
+             mock.patch("backend.permissions.status",
+                        return_value={"ok": True, "detail": "x",
+                                      "in_control_group": True}):
+            self.assertTrue(permissions.install_fix()[0])
+        script = run.call_args[0][0][-1]
+        self.assertIn("usermod -aG xboxwireless nomade", script)
+        self.assertNotIn("usermod -aG input", script)
+        self.assertIn("71-xbox-wireless-gui.rules", script)
+
     def test_install_fix_branches(self):
         import subprocess as sp
-        with mock.patch("backend.permissions._rule_source",
-                        return_value=None):
+        with mock.patch("backend.permissions._login_user", return_value=""):
             self.assertFalse(permissions.install_fix()[0])
-        with mock.patch("backend.permissions._rule_source",
-                        return_value="/r"), \
-             mock.patch("shutil.which", return_value=None):
+        with mock.patch("backend.permissions._login_user",
+                        return_value="user name"):
             self.assertFalse(permissions.install_fix()[0])
-        with mock.patch("backend.permissions._rule_source",
-                        return_value="/r"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value=None):
+            self.assertFalse(permissions.install_fix()[0])
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
              mock.patch("backend.permissions.subprocess.run",
                         side_effect=sp.TimeoutExpired("x", 1)):
             self.assertFalse(permissions.install_fix()[0])
-        with mock.patch("backend.permissions._rule_source",
-                        return_value="/r"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
              mock.patch("backend.permissions.subprocess.run",
                         side_effect=OSError("x")):
             self.assertFalse(permissions.install_fix()[0])
-        with mock.patch("backend.permissions._rule_source",
-                        return_value="/r"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
              mock.patch("backend.permissions.subprocess.run",
                         return_value=mock.Mock(returncode=1, stderr="",
                                               stdout="")):
             self.assertFalse(permissions.install_fix()[0])
-        with mock.patch("backend.permissions._rule_source",
-                        return_value="/r"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
              mock.patch("backend.permissions.subprocess.run",
                         return_value=mock.Mock(returncode=0, stdout="",
                                               stderr="")), \
              mock.patch("backend.permissions.status",
                         return_value={"ok": True, "detail": "x",
-                                      "in_input_group": True}):
+                                      "in_control_group": True}):
             ok, msg = permissions.install_fix()
             self.assertTrue(ok)
             self.assertIn("corrigidas", msg)
-        with mock.patch("backend.permissions._rule_source",
-                        return_value="/r"), \
-             mock.patch("shutil.which", return_value="/pk"), \
+        with mock.patch("backend.permissions._login_user",
+                        return_value="nomade"), \
+             mock.patch("backend.permissions._pkexec", return_value="/pk"), \
              mock.patch("backend.permissions.subprocess.run",
                         return_value=mock.Mock(returncode=0, stdout="",
                                               stderr="")), \
              mock.patch("backend.permissions.status",
                         return_value={"ok": False,
                                       "detail": "falta y",
-                                      "in_input_group": False}):
+                                      "in_control_group": False}):
             ok, msg = permissions.install_fix()
             self.assertTrue(ok)
             self.assertIn("falta y", msg)
@@ -212,6 +379,32 @@ class TestPermissionsFull(unittest.TestCase):
 
 
 class TestBluetoothFull(unittest.TestCase):
+    def test_phys_success_closes(self):
+        import evdev
+
+        class Dev:
+            phys = "AA:BB:CC:DD:EE:FF"
+            closed = False
+
+            def close(self):
+                Dev.closed = True
+
+        with mock.patch.object(evdev, "InputDevice", return_value=Dev()):
+            self.assertEqual(bluetooth.phys_of("/p"), "AA:BB:CC:DD:EE:FF")
+        self.assertTrue(Dev.closed)
+
+    def test_phys_close_error(self):
+        import evdev
+
+        class Dev:
+            phys = "AA:BB:CC:DD:EE:FF"
+
+            def close(self):
+                raise OSError("close")
+
+        with mock.patch.object(evdev, "InputDevice", return_value=Dev()):
+            self.assertEqual(bluetooth.phys_of("/p"), "AA:BB:CC:DD:EE:FF")
+
     def test_phys_variants(self):
         import evdev
         with mock.patch.object(evdev, "InputDevice",
@@ -324,7 +517,7 @@ class TestI18nFull(unittest.TestCase):
                                           "LANG": ""}):
             self.assertEqual(i18n._pick_language(), "en_US.UTF-8")
         with mock.patch.dict(os.environ, {}, clear=True), \
-             mock.patch("backend.i18n.locale.getdefaultlocale",
+             mock.patch("backend.i18n.locale.getlocale",
                         side_effect=Exception("x")):
             self.assertIsNone(i18n._pick_language())
         self.assertEqual(i18n.N_("abc"), "abc")

@@ -1,5 +1,6 @@
 """Backend xow (legado): pairing via SIGUSR1 no serviço systemd."""
 from __future__ import annotations
+import os
 import shutil
 import subprocess
 
@@ -19,9 +20,19 @@ def service_active() -> bool:
     return r.stdout.strip() == "active"
 
 
+def _pkexec() -> str | None:
+    for p in ("/usr/bin/pkexec", "/bin/pkexec"):
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
 def set_pairing() -> tuple[bool, str]:
     """xow entra em pairing com: systemctl kill -s SIGUSR1 xow (precisa sudo)."""
-    cmd = ["pkexec", "systemctl", "kill", "-s", "SIGUSR1", "xow"]
+    pkexec = _pkexec()
+    if not pkexec:
+        return False, _("pkexec não encontrado")
+    cmd = [pkexec, "systemctl", "kill", "-s", "SIGUSR1", "xow"]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if r.returncode == 0:

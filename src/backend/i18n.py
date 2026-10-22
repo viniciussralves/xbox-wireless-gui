@@ -24,10 +24,12 @@ def _localedirs() -> list[str]:
 def _pick_language() -> str | None:
     for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         val = (os.environ.get(var, "") or "").split(":")[0]
-        if val and val.lower() != "c":
+        if val and val.lower() not in ("c", "posix", "c.utf-8", "posix.utf-8"):
             return val
     try:
-        loc = locale.getdefaultlocale()[0]
+        # locale.getdefaultlocale() está depreciado e será removido no
+        # Python 3.15; getlocale() é a API atual.
+        loc = locale.getlocale(locale.LC_MESSAGES)[0]
     except Exception:  # noqa: BLE001
         loc = None
     return loc

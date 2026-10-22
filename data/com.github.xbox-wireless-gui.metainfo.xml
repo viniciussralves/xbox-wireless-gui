@@ -17,7 +17,7 @@
   </description>
   <launchable type="desktop-id">com.github.xbox-wireless-gui.desktop</launchable>
   <url type="homepage">https://github.com/viniciussralves/xbox-wireless-gui</url>
-  <developer>
+  <developer id="com.github.viniciussralves">
     <name>theone</name>
   </developer>
   <content_rating type="oars-1.1">
@@ -50,4 +50,7 @@
   <requires>
     <display_length compare="ge">360</display_length>
   </requires>
+  <releases>
+    <release version="0.1.0" date="2026-10-18"/>
+  </releases>
 </component>

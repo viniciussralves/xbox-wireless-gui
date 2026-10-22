@@ -1,0 +1,76 @@
+#!/bin/sh
+# Helper root-owned do Xbox Wireless GUI. Executado via pkexec com
+# subcomandos fixos; nunca recebe uma linha de shell do app.
+set -eu
+
+die() {
+    echo "xbox-wireless-gui-helper: $*" >&2
+    exit 2
+}
+
+case "${1:-}" in
+    pairing)
+        [ "$#" -eq 3 ] || die "uso: pairing on|off <pairing>"
+        state=$2
+        path=$3
+        case "$state" in
+            on) value=1 ;;
+            off) value=0 ;;
+            *) die "estado inválido" ;;
+        esac
+        case "$path" in
+            *..*) die "caminho de pairing inválido" ;;
+            /sys/bus/usb/drivers/xone-dongle/*/pairing) ;;
+            *) die "caminho de pairing inválido" ;;
+        esac
+        [ -f "$path" ] || die "pairing não existe"
+        printf '%s\n' "$value" > "$path"
+        ;;
+    led)
+        [ "$#" -eq 4 ] || die "uso: led <id> <mode> <brightness>"
+        id=$2
+        mode=$3
+        brightness=$4
+        case "$id" in
+            ''|*..*|*[!A-Za-z0-9._:+-]*) die "id de LED inválido" ;;
+        esac
+        case "$mode" in
+            0|1|2|3|4|8|9) ;;
+            *) die "modo de LED inválido" ;;
+        esac
+        case "$brightness" in
+            ''|*[!0-9]*) die "brilho inválido" ;;
+        esac
+        base="/sys/class/leds/$id"
+        [ -d "$base" ] || die "LED não existe"
+        [ -f "$base/mode" ] && [ -f "$base/brightness" ] || die "LED incompleto"
+        max=$(cat "$base/max_brightness" 2>/dev/null || echo 255)
+        [ "$brightness" -le "$max" ] || die "brilho fora da faixa"
+        printf '%s\n' "$mode" > "$base/mode"
+        printf '%s\n' "$brightness" > "$base/brightness"
+        ;;
+    permissions)
+        [ "$#" -eq 2 ] || die "uso: permissions <usuário>"
+        user=$2
+        case "$user" in
+            -*|''|*[!A-Za-z0-9_.-]*) die "usuário inválido" ;;
+        esac
+        id -- "$user" >/dev/null 2>&1 || die "usuário não existe"
+        getent group xboxwireless >/dev/null 2>&1 || groupadd -r xboxwireless
+        rule=/usr/share/xbox-wireless-gui/71-xbox-wireless-gui.rules
+        if [ -f "$rule" ]; then
+            install -m644 "$rule" /etc/udev/rules.d/71-xbox-wireless-gui.rules
+        fi
+        udevadm control --reload-rules
+        udevadm trigger --action=add --subsystem-match=leds
+        udevadm trigger --action=add --subsystem-match=input
+        usermod -aG xboxwireless "$user"
+        chgrp xboxwireless /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode \
+            /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || true
+        chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode \
+            /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || true
+        ;;
+    *)
+        die "subcomando desconhecido"
+        ;;
+esac

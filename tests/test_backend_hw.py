@@ -1,5 +1,7 @@
 """Cobertura backend (mocks, sem hardware): battery/detector/xone/xow/rumble."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import types
 import unittest
@@ -237,7 +239,20 @@ class TestXoneFull(unittest.TestCase):
         with mock.patch("backend.xone.subprocess.run",
                         return_value=mock.Mock(returncode=0)) as r:
             xone._run_pkexec_shell("echo 1")
-            self.assertIn("pkexec", r.call_args[0][0])
+            self.assertTrue(r.call_args[0][0][0].endswith("pkexec"))
+
+    def test_pkexec_fallback_and_missing(self):
+        with mock.patch("backend.xone.os.path.isfile", return_value=False):
+            self.assertIsNone(xone._pkexec())
+        with mock.patch("backend.xone._pkexec", return_value=None):
+            with self.assertRaises(FileNotFoundError):
+                xone._run_pkexec_shell("echo 1")
+
+    def test_set_led_invalid_mode(self):
+        m = mock.mock_open(read_data="50")
+        with mock.patch("os.path.isdir", return_value=True), \
+             mock.patch("builtins.open", m):
+            self.assertFalse(xone.set_led("gip0", "7", "5")[0])
 
     def test_list_controllers(self):
         m = mock.mock_open(read_data="7")
@@ -286,6 +301,81 @@ class TestXoneFull(unittest.TestCase):
             ok, _ = xone.set_led("gip0", "2", "5")
         self.assertFalse(ok)
 
+    def test_helper_detection_and_errors(self):
+        with mock.patch("backend.xone.os.path.isfile", return_value=True), \
+             mock.patch("backend.xone.os.access", return_value=True), \
+             mock.patch("backend.xone.os.stat",
+                        return_value=mock.Mock(st_uid=0, st_mode=0o755)):
+            self.assertEqual(xone._helper(), xone.HELPER)
+        with mock.patch("backend.xone._helper", return_value=None):
+            self.assertIsNone(xone._run_helper("pairing"))
+        with mock.patch("backend.xone._helper", return_value="/h"), \
+             mock.patch("backend.xone._pkexec", return_value="/p"), \
+             mock.patch("backend.xone.subprocess.run",
+                        return_value=mock.Mock(returncode=0)) as run:
+            self.assertIsNotNone(xone._run_helper("led", "gip0", "2", "5"))
+        run.assert_called_once()
+        with mock.patch("backend.xone._helper", return_value="/h"), \
+             mock.patch("backend.xone._pkexec", return_value="/p"), \
+             mock.patch("backend.xone.subprocess.run",
+                        side_effect=OSError("x")):
+            self.assertIsNone(xone._run_helper("led"))
+        self.assertEqual(xone._helper_error(
+            mock.Mock(returncode=3, stderr="", stdout="")),
+            "helper saiu 3")
+
+    def test_helper_error_messages(self):
+        with mock.patch("backend.xone.get_pairing_file",
+                        return_value="/sys/bus/usb/drivers/xone-dongle/d/pairing"), \
+             mock.patch("builtins.open", side_effect=PermissionError()), \
+             mock.patch("backend.xone._run_helper",
+                        return_value=mock.Mock(returncode=1, stderr="bad",
+                                              stdout="")):
+            ok, msg = xone.set_pairing(True)
+        self.assertFalse(ok)
+        self.assertIn("bad", msg)
+        m = mock.mock_open(read_data="50")
+        m.side_effect = [mock.mock_open(read_data="50").return_value,
+                         PermissionError(), PermissionError()]
+        with mock.patch("os.path.isdir", return_value=True), \
+             mock.patch("builtins.open", m), \
+             mock.patch("backend.xone._run_helper",
+                        return_value=mock.Mock(returncode=1, stderr="bad",
+                                              stdout="")):
+            ok, msg = xone.set_led("gip0", "2", "5")
+        self.assertFalse(ok)
+        self.assertIn("bad", msg)
+
+    def test_helper_pairing_and_led(self):
+        ok_run = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch("backend.xone.get_pairing_file",
+                        return_value="/sys/bus/usb/drivers/xone-dongle/d/pairing"), \
+             mock.patch("builtins.open", side_effect=PermissionError()), \
+             mock.patch("backend.xone._run_helper",
+                        return_value=ok_run) as helper:
+            ok, _ = xone.set_pairing(True)
+        self.assertTrue(ok)
+        helper.assert_called_once_with(
+            "pairing", "on", "/sys/bus/usb/drivers/xone-dongle/d/pairing")
+
+        m = mock.mock_open(read_data="50")
+        m.side_effect = [mock.mock_open(read_data="50").return_value,
+                         PermissionError(), PermissionError()]
+        with mock.patch("os.path.isdir", return_value=True), \
+             mock.patch("builtins.open", m), \
+             mock.patch("backend.xone._run_helper",
+                        return_value=ok_run) as helper:
+            ok, _ = xone.set_led("gip0", "9", "5")
+        self.assertTrue(ok)
+        helper.assert_called_once_with("led", "gip0", "9", "5")
+
+    def test_set_led_fade_mode(self):
+        m = mock.mock_open(read_data="50")
+        with mock.patch("os.path.isdir", return_value=True), \
+             mock.patch("builtins.open", m):
+            ok, _ = xone.set_led("gip0", "9", "5")
+        self.assertTrue(ok)
+
     def test_set_led_max_unreadable(self):
         with mock.patch("os.path.isdir", return_value=True), \
              mock.patch("builtins.open", side_effect=OSError("x")):
@@ -302,6 +392,12 @@ class TestXoneFull(unittest.TestCase):
 
 
 class TestXowFull(unittest.TestCase):
+    def test_xow_pkexec_branches(self):
+        with mock.patch("backend.xow.os.path.isfile", return_value=False):
+            self.assertIsNone(xow._pkexec())
+        with mock.patch("backend.xow._pkexec", return_value=None):
+            self.assertFalse(xow.set_pairing()[0])
+
     def test_all(self):
         import subprocess as sp
         with mock.patch("shutil.which", return_value="/usr/bin/xow"):
@@ -368,6 +464,50 @@ class TestRumbleFull(unittest.TestCase):
     def test_find_importerror(self):
         with mock.patch.dict(sys.modules, {"evdev": None}):
             self.assertEqual(rumble.find_gamepads(), [])
+
+    def test_find_list_oserror(self):
+        import evdev
+        with mock.patch.object(evdev, "list_devices",
+                               side_effect=OSError("x")):
+            self.assertEqual(rumble.find_gamepads(), [])
+
+    def test_find_close_and_caps_errors(self):
+        import evdev
+
+        class Dev(FakeInputDevice):
+            def close(self):
+                raise OSError("close")
+
+        class BadCaps(Dev):
+            def capabilities(self, absinfo=False):
+                raise OSError("caps")
+
+        with mock.patch.object(evdev, "list_devices",
+                               return_value=["p1", "p2"]), \
+             mock.patch.object(evdev, "InputDevice",
+                               side_effect=[Dev("p1"), BadCaps("p2")]):
+            out = rumble.find_gamepads()
+        self.assertEqual([d["path"] for d in out], ["p1"])
+
+    def test_rumble_close_error_still_ok(self):
+        import evdev
+
+        class Dev(FakeInputDevice):
+            def upload_effect(self, e):
+                return 1
+
+            def write(self, *a):
+                pass
+
+            def erase_effect(self, i):
+                pass
+
+            def close(self):
+                raise OSError("close")
+
+        with mock.patch.object(evdev, "InputDevice", return_value=Dev("p")), \
+             mock.patch("time.sleep"):
+            self.assertTrue(rumble.rumble("p", duration_ms=10)[0])
 
     def test_rumble_success(self):
         import evdev

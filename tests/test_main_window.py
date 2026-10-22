@@ -1,5 +1,7 @@
 """MainWindow/App (precisa de display; usa backends com mock)."""
 import os
+
+from tests import _env  # noqa: F401
 import sys
 import time
 import unittest
@@ -188,8 +190,10 @@ class MainWindowCase(unittest.TestCase):
         self.xone.set_pairing.assert_not_called()
         w._updating_switch = False
         w._on_pair_switch(w.pair_switch, None)
+        pump()
         self.xone.set_pairing.assert_called()
         w.on_pair()
+        pump()
         self.xone.set_pairing.assert_called_with(True, "/d/0")
 
     def test_pair_xow_none(self):
@@ -200,6 +204,7 @@ class MainWindowCase(unittest.TestCase):
                                return_value=(True, "ok")), \
              mock.patch.object(w, "_start_xow_countdown") as cd:
             w.on_pair()
+            pump()
             cd.assert_called_once()
         self._std_xone(name="nenhum")
         w = self._win()
@@ -308,6 +313,7 @@ class MainWindowCase(unittest.TestCase):
 
     def test_countdown(self):
         from gi.repository import GLib
+        self._std_xone(name="xow")
         w = self._win()
         w._start_xow_countdown()
         self.assertFalse(w.pair_btn.get_sensitive())
