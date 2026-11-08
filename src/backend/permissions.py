@@ -33,8 +33,8 @@ RULE_CONTENT = """\
 # LEDs dos controles (xone): escrita em mode/brightness
 ACTION=="add|change", SUBSYSTEM=="leds", KERNEL=="gip*", RUN+="/bin/sh -c 'chgrp xboxwireless /sys%p/brightness /sys%p/mode 2>/dev/null; chmod g+w /sys%p/brightness /sys%p/mode 2>/dev/null'"
 
-# Dongle xone: escrita no pairing
-ACTION=="add|change", DRIVER=="xone-dongle", RUN+="/bin/sh -c 'chgrp xboxwireless /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null; chmod g+w /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null'"
+# Dongle xone: escrita no pairing e no poweroff (desligar controles)
+ACTION=="add|change", DRIVER=="xone-dongle", RUN+="/bin/sh -c 'chgrp xboxwireless /sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null; chmod g+w /sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null'"
 
 # Gamepads: ACL do logind para o usuário da sessão (evdev sem grupo input)
 ACTION=="add|change", SUBSYSTEM=="input", ENV{ID_INPUT_JOYSTICK}=="1", TAG+="uaccess"
@@ -116,6 +116,10 @@ def pairing_writable() -> tuple[bool, list[str]]:
     return _writable_sysfs(["/sys/bus/usb/drivers/xone-dongle/*/pairing"])
 
 
+def poweroff_writable() -> tuple[bool, list[str]]:
+    return _writable_sysfs(["/sys/bus/usb/drivers/xone-dongle/*/poweroff"])
+
+
 def evdev_readable() -> tuple[bool, str]:
     try:
         from evdev import InputDevice
@@ -142,6 +146,7 @@ def status() -> dict:
     effective = _effective_group(CONTROL_GROUP)
     leds_ok, leds_bad = leds_writable()
     pair_ok, pair_bad = pairing_writable()
+    power_ok, power_bad = poweroff_writable()
     ev_ok, ev_info = evdev_readable()
     problems: list[str] = []
     if not rule:
@@ -155,11 +160,14 @@ def status() -> dict:
         problems.append(_("LED sem escrita ({n})").format(n=len(leds_bad)))
     if not pair_ok:
         problems.append(_("pairing sem escrita ({n})").format(n=len(pair_bad)))
+    if not power_ok:
+        problems.append(_("poweroff sem escrita ({n})").format(n=len(power_bad)))
     if not ev_ok:
         problems.append(_("evdev sem leitura ({info})").format(info=ev_info))
     return {"ok": not problems, "rule": rule, "in_input_group": ingroup,
             "in_control_group": ingroup,
             "leds_ok": leds_ok, "pairing_ok": pair_ok,
+            "poweroff_ok": power_ok,
             "evdev_ok": ev_ok, "evdev_info": ev_info,
             "problems": problems,
             "detail": _("tudo certo") if not problems else " • ".join(problems)}
@@ -259,9 +267,9 @@ udevadm trigger --action=add --subsystem-match=leds
 udevadm trigger --action=add --subsystem-match=input
 usermod -aG {CONTROL_GROUP} {shlex.quote(user)}
 chgrp {CONTROL_GROUP} /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode \
-/sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || true
+/sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null || true
 chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode \
-/sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || true
+/sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null || true
 """
     try:
         r = subprocess.run([pkexec, "sh", "-c", script],

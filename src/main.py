@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Xbox Wireless GUI — GTK4 + Libadwaita, backend xone + xow (Fedora)."""
 from __future__ import annotations
+import argparse
+import json
 import math
 import os
 import sys
 import threading
 import time
+from collections import deque
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -13,7 +16,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw, Gio, GLib, Gdk  # noqa: E402
 
 from backend import bluetooth, detector, firmware, permissions, prefs, updates
-from backend import xone, xow, battery, rumble, inputs
+from backend import xone, xow, battery, rumble, inputs, audio, diagnostics, profiles
 from backend.rumble import is_virtual_pad
 from backend.xone import VALID_LED_MODES
 from backend import __version__ as APP_VERSION
@@ -63,6 +66,73 @@ def bat_time_text(b: dict) -> str:
     return st_pt or ""
 
 
+_LEVEL_PCT = {
+    "full": 100,
+    "high": 80,
+    "normal": 60,
+    "low": 30,
+    "critical": 10,
+    "none": 0,
+}
+_LEVEL_TEXT = {
+    "full": _("cheio"),
+    "high": _("alto"),
+    "normal": _("normal"),
+    "low": _("baixo"),
+    "critical": _("crítico"),
+}
+
+
+def battery_is_reliable(b: dict) -> bool:
+    try:
+        return bool(b.get("is_reliable") or b.get("power_supply")) and \
+            int(b.get("percentage", -1)) >= 0
+    except (TypeError, ValueError):
+        return False
+
+
+def battery_pct(b: dict) -> int:
+    """% exato quando confiável; estimativa pelo nível caso contrário."""
+    try:
+        pct = int(b.get("percentage", -1))
+    except (TypeError, ValueError):
+        pct = -1
+    if battery_is_reliable(b):
+        return pct
+    est = _LEVEL_PCT.get((b.get("level_en") or "").strip().lower(), -1)
+    return est if est >= 0 else pct
+
+
+def battery_level_text(b: dict) -> str:
+    lvl = (b.get("level_en") or "").strip().lower()
+    return b.get("level") or _LEVEL_TEXT.get(lvl, "")
+
+
+def connection_kind(pad_path: str | None, led_id: str | None) -> str:
+    if led_id:
+        return _("Dongle xone")
+    if pad_path:
+        try:
+            if bluetooth.is_bluetooth(pad_path):
+                return _("Bluetooth")
+        except Exception:  # noqa: BLE001
+            pass
+        return _("USB/evdev")
+    return _("desconhecido")
+
+
+def power_index(led_id: str | None) -> int | None:
+    """Extrai o índice do cliente xone de 'gip0.1:white:status' -> 1."""
+    base = (led_id or "").split(":")[0]
+    if not base.startswith("gip"):
+        return None
+    nums = base[3:].split(".")
+    try:
+        return int(nums[1]) if len(nums) >= 2 else int(nums[0])
+    except (ValueError, IndexError):
+        return None
+
+
 def led_mode_label(mode: str) -> str:
     return {
         "0": _("Desligado"),
@@ -90,13 +160,41 @@ class ControllerCard(Adw.ExpanderRow):
 
     def __init__(self, title: str, subtitle: str, led_id: str | None,
                  window: "MainWindow", pad_path: str | None = None,
-                 led_info: dict | None = None):
-        super().__init__(title=title, subtitle=subtitle)
+                 led_info: dict | None = None, serial: str | None = None,
+                 connection: str | None = None,
+                 custom_name: str | None = None):
+        super().__init__(title=custom_name or title, subtitle=subtitle)
         self._win = window
         self.led_id = led_id
         self.pad_path = pad_path
+        self.serial = (serial or "").strip()
+        self.connection = connection or connection_kind(pad_path, led_id)
+        self.power_index = power_index(led_id)
         self.add_prefix(Gtk.Image.new_from_icon_name("input-gaming-symbolic"))
         self.set_expanded(False)
+
+        # --- informações / identificação ---
+        info_parts = [self.connection]
+        if self.serial:
+            info_parts.append(_("serial {s}").format(s=self.serial))
+        if pad_path:
+            info_parts.append(pad_path)
+        self.info_row = Adw.ActionRow(title=_("Informações"),
+                                      subtitle=" • ".join(info_parts))
+        self.info_row.set_activatable(False)
+        if self.serial:
+            rename_btn = Gtk.Button(label=_("Renomear"))
+            rename_btn.add_css_class("btn-std")
+            rename_btn.set_valign(Gtk.Align.CENTER)
+            rename_btn.connect("clicked", self._on_rename)
+            self.info_row.add_suffix(rename_btn)
+        copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.set_tooltip_text(_("Copiar informações do controle"))
+        copy_btn.add_css_class("btn-icon")
+        copy_btn.set_valign(Gtk.Align.CENTER)
+        copy_btn.connect("clicked", self._on_copy_info)
+        self.info_row.add_suffix(copy_btn)
+        self.add_row(self.info_row)
 
         # --- bateria ---
         self.bat_icon = Gtk.Image.new_from_icon_name("battery-missing-symbolic")
@@ -159,14 +257,36 @@ class ControllerCard(Adw.ExpanderRow):
             led_row.set_activatable(False)
             self.add_row(led_row)
 
-        # --- vibração ---
+        # --- energia: desligar o controle pelo sysfs do xone ---
+        if self.power_index is not None:
+            off_btn = Gtk.Button(label=_("Desligar"))
+            off_btn.add_css_class("destructive-action")
+            off_btn.add_css_class("btn-std")
+            off_btn.set_valign(Gtk.Align.CENTER)
+            off_btn.connect("clicked", self._on_poweroff)
+            off_row = Adw.ActionRow(
+                title=_("Desligar controle"),
+                subtitle=_("envia poweroff ao dongle; religue com o botão Xbox"))
+            off_row.add_suffix(off_btn)
+            off_row.set_activatable(False)
+            self.add_row(off_row)
+
+        # --- vibração (teste dos dois motores separadamente) ---
         vib_btn = Gtk.Button(label=_("Vibrar"), icon_name="audio-volume-high-symbolic")
         vib_btn.add_css_class("btn-std")
         vib_btn.set_valign(Gtk.Align.CENTER)
         vib_btn.connect("clicked", self._on_vibrate)
+        vib_box = Gtk.Box(spacing=6)
+        vib_box.append(vib_btn)
+        for motor, label in (("strong", _("Forte")), ("weak", _("Fraco"))):
+            b = Gtk.Button(label=label)
+            b.add_css_class("btn-std")
+            b.set_valign(Gtk.Align.CENTER)
+            b.connect("clicked", lambda _b, m=motor: self._on_vibrate_motor(m))
+            vib_box.append(b)
         vib_row = Adw.ActionRow(title=_("Teste de vibração"),
-                                subtitle=_("testa a vibração via evdev (ff-rumble)"))
-        vib_row.add_suffix(vib_btn)
+                                subtitle=_("testa os motores via evdev (ff-rumble)"))
+        vib_row.add_suffix(vib_box)
         vib_row.set_activatable(False)
         self.add_row(vib_row)
         self._vib_btn = vib_btn
@@ -196,16 +316,18 @@ class ControllerCard(Adw.ExpanderRow):
             self.add_row(disc_row)
 
     def set_battery_info(self, b: dict):
-        try:
-            pct = int(b.get("percentage", -1))
-        except (ValueError, TypeError):
-            pct = -1
+        pct = battery_pct(b)
         if pct < 0:
             self.bat_label.set_markup('<b>—</b>')
             self.bat_row.set_subtitle(_("sem dados"))
             return
+        reliable = battery_is_reliable(b)
         style_bat_bar(self.bat_bar, pct)
-        self.bat_label.set_markup(f'<b>{pct}%</b>')
+        if reliable:
+            self.bat_label.set_markup(f'<b>{pct}%</b>')
+        else:
+            lvl = battery_level_text(b)
+            self.bat_label.set_markup(f'<b>{lvl or f"≈{pct}%"}</b>')
         icon = b.get("icon") or "battery-good-symbolic"
         self.bat_icon.set_from_icon_name(icon)
         self.bat_icon.set_pixel_size(28)
@@ -216,12 +338,16 @@ class ControllerCard(Adw.ExpanderRow):
         parts = [state, _("nível {lvl}").format(lvl=lvl)] if lvl and lvl != "—" else [state]
         if detail and detail != state:
             parts.append(detail)
+        if not reliable:
+            parts.append(_("estimativa pelo nível"))
         sub = " • ".join(s for s in parts if s)
         self.bat_row.set_subtitle(sub or _("via UPower"))
 
     def set_battery(self, pct: int, state: str):
         self.set_battery_info({"percentage": pct, "state": state,
-                               "state_en": state})
+                               "state_en": state, "is_reliable": True,
+                               "level_en": "full" if pct >= 95 else "normal"})
+        return
 
     def _on_led_apply(self, _b):
         if not self.led_id:
@@ -250,19 +376,72 @@ class ControllerCard(Adw.ExpanderRow):
                 _ok, msg = xone.set_led(led_id, led_mode, led_val)
             except Exception as e:  # noqa: BLE001
                 msg = str(e)
-            GLib.idle_add(self._led_done, msg)
+            GLib.idle_add(self._led_done, msg, led_mode)
         threading.Thread(target=work, daemon=True).start()
 
-    def _led_done(self, msg: str):
+    def _led_done(self, msg: str, mode: str | None = None):
         self.apply_btn.set_sensitive(True)
+        if self.serial and mode in VALID_LED_MODES:
+            try:
+                profiles.set_led(self.serial, mode,
+                                 int(self.led_scale.get_value()))
+            except Exception:  # noqa: BLE001
+                pass
         self._win.toast(msg)
         return False
+
+    def apply_saved_profile(self):
+        """Reaplica o LED salvo quando o controle reconecta (xone reseta)."""
+        if not (self.led_id and self.serial):
+            return
+        saved = profiles.led_of(self.serial)
+        try:
+            mode = str(saved.get("mode")) if saved.get("mode") is not None else ""
+            brightness = int(saved.get("brightness")) if saved.get("brightness") is not None else -1
+        except (TypeError, ValueError):
+            return
+        if mode not in VALID_LED_MODES or brightness < 0:
+            return
+        try:
+            idx = VALID_LED_MODES.index(mode)
+            self.led_mode.set_selected(idx)
+            self.led_scale.set_value(brightness)
+        except Exception:  # noqa: BLE001
+            return
+        threading.Thread(
+            target=lambda: xone.set_led(self.led_id, mode, str(brightness)),
+            daemon=True).start()
+
+    def _on_poweroff(self, _b):
+        if self.power_index is not None:
+            self._win.poweroff_controller(self.power_index, self.led_id,
+                                          self.get_title())
+
+    def _on_rename(self, _b):
+        if self.serial:
+            self._win.rename_controller(self.serial, self.get_title())
+
+    def _on_copy_info(self, _b):
+        text = "\n".join([
+            _("Controle: {n}").format(n=self.get_title()),
+            _("Conexão: {c}").format(c=self.connection),
+            _("Serial: {s}").format(s=self.serial or "—"),
+            _("evdev: {p}").format(p=self.pad_path or "—"),
+            _("LED: {l}").format(l=self.led_id or "—"),
+        ])
+        self._win.copy_text(text)
 
     def _on_vibrate(self, _b):
         if self.pad_path:
             self._win.vibrate_path(self.pad_path)
         else:
             self._win.vibrate_first()
+
+    def _on_vibrate_motor(self, motor: str):
+        if self.pad_path:
+            self._win.vibrate_path(self.pad_path, motor=motor)
+        else:
+            self._win.vibrate_first(motor=motor)
 
     def _on_test_buttons(self, _b):
         self._win.open_tester(self.pad_path)
@@ -283,6 +462,7 @@ class TesterWindow(Adw.Window):
         self._state = inputs.new_state()
         self._watch_id: int | None = None
         self._devices: list[dict] = []
+        self._raw: deque[str] = deque(maxlen=14)
         self._prefs = prefs.get_prefs()
 
         header = Adw.HeaderBar()
@@ -292,6 +472,10 @@ class TesterWindow(Adw.Window):
         reload_btn.set_tooltip_text(_("Procurar gamepads novamente"))
         reload_btn.connect("clicked", lambda *_a: self._reload_devices(None))
         header.pack_start(reload_btn)
+        copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.set_tooltip_text(_("Copiar estado atual"))
+        copy_btn.connect("clicked", self._on_copy_state)
+        header.pack_end(copy_btn)
 
         self.dev_list = Gtk.StringList()
         self.dropdown = Gtk.DropDown(model=self.dev_list)
@@ -341,6 +525,11 @@ class TesterWindow(Adw.Window):
         content.append(self.area)
         content.append(self.status_label)
         content.append(self.axis_label)
+        self.raw_label = Gtk.Label(label=_("eventos evdev aparecem aqui"))
+        self.raw_label.add_css_class("dim")
+        self.raw_label.set_wrap(True)
+        self.raw_label.set_selectable(True)
+        content.append(self.raw_label)
         # mapeamento evdev → botão (referência estática)
         try:
             from evdev import ecodes as _ec
@@ -483,6 +672,7 @@ class TesterWindow(Adw.Window):
         try:
             from evdev import ecodes
             changed = False
+            logged = False
             # limita o lote para não monopolizar a thread da UI
             for _n in range(512):
                 try:
@@ -505,16 +695,26 @@ class TesterWindow(Adw.Window):
                     # SYN_DROPPED = buffer transbordou, eventos perdidos:
                     # ressincroniza tudo em vez de deixar botão "grudado"
                     if ev.code == ecodes.SYN_DROPPED:
-                        if inputs.resync(self._state, self._dev, self._limits):
+                        if inputs.resync(self._state, self._dev,
+                                         self._limits, self._deadzone()):
                             changed = True
                     continue
                 if ev.type == ecodes.EV_KEY:
+                    name = inputs.code_name(ev.code)
+                    self._raw.append(f"KEY {name}={ev.value}")
+                    logged = True
                     if inputs.apply_key(self._state, ev.code, ev.value):
                         changed = True
                 elif ev.type == ecodes.EV_ABS:
+                    name = ecodes.bytype.get(ecodes.EV_ABS, {}).get(
+                        ev.code, str(ev.code))
+                    self._raw.append(f"ABS {name}={ev.value}")
+                    logged = True
                     if inputs.apply_abs(self._state, ev.code, ev.value,
                                         self._limits, self._deadzone()):
                         changed = True
+            if logged:
+                self.raw_label.set_text("\n".join(self._raw))
             if changed:
                 self._update_labels()
                 self.area.queue_draw()
@@ -548,6 +748,24 @@ class TesterWindow(Adw.Window):
             f"LX {s['lx']:+.2f}  LY {s['ly']:+.2f}  •  "
             f"RX {s['rx']:+.2f}  RY {s['ry']:+.2f}  •  "
             f"LT {s['lt']:.0%}  RT {s['rt']:.0%}")
+
+    def _on_copy_state(self, _b):
+        s = self._state
+        text = "\n".join([
+            _("Dispositivo: {n} ({p})").format(n=s.get("name", "?"),
+                                               p=s.get("path", "?")),
+            _("Pressionados: {n}").format(n=" ".join(inputs.pressed_names(s)) or "—"),
+            f"LX {s['lx']:+.2f} LY {s['ly']:+.2f} "
+            f"RX {s['rx']:+.2f} RY {s['ry']:+.2f} "
+            f"LT {s['lt']:.0%} RT {s['rt']:.0%}",
+            _("Últimos eventos:") + "\n" + ("\n".join(self._raw) or "—"),
+        ])
+        try:
+            provider = Gdk.ContentProvider.new_for_bytes(
+                "text/plain;charset=utf-8", GLib.Bytes.new(text.encode()))
+            self.get_clipboard().set_content(provider)
+        except Exception:  # noqa: BLE001
+            pass
 
     # ---- desenho minimalista: grade quadrada, sem silhueta ----
     def _draw(self, _area, cr, w: int, h: int, _data):
@@ -724,9 +942,10 @@ class TesterWindow(Adw.Window):
         rbutton(447, 166, label="B", active=s["b"])
         rbutton(405, 208, label="A", active=s["a"])
 
-        # ---- Share (pílula + seta; decorativo: xone não expõe o botão) ----
+        # ---- Share (pílula + seta; acende se o driver expuser) ----
+        share_on = bool(s.get("share"))
         cr.new_path()
-        cr.set_line_width(THIN)
+        cr.set_line_width(BOLD if share_on else THIN)
         cx, cy, hw, hh = 387, 297, 33, 12
         cr.move_to(cx - hw + hh, cy - hh)
         cr.line_to(cx + hw - hh, cy - hh)
@@ -734,7 +953,7 @@ class TesterWindow(Adw.Window):
         cr.line_to(cx - hw + hh, cy + hh)
         cr.arc(cx - hw + hh, cy, hh, math.pi / 2, math.pi * 1.5)
         cr.close_path()
-        stroke()
+        stroke(share_on)
         cr.new_path()
         cr.set_line_width(1.4)
         cr.move_to(cx, cy + 5)
@@ -742,7 +961,7 @@ class TesterWindow(Adw.Window):
         cr.move_to(cx - 4, cy - 1)
         cr.line_to(cx, cy - 6)
         cr.line_to(cx + 4, cy - 1)
-        stroke()
+        stroke(share_on)
 
         cr.restore()
 
@@ -760,6 +979,12 @@ class MainWindow(Adw.ApplicationWindow):
         self._pair_busy = False
         self._driver_name_cached = ""
         self._perm_checked_at = 0.0
+        self._last_conn: set[str] | None = None
+        self._low_notified: set[str] = set()
+        self._applied_profiles: set[str] = set()
+        self._pair_auto_id: int | None = None
+        self._audio_rows: list[Adw.ActionRow] = []
+        self._bt_rows: list[Adw.ActionRow] = []
 
         css = Gtk.CssProvider()
         css.load_from_data(CSS)
@@ -771,6 +996,7 @@ class MainWindow(Adw.ApplicationWindow):
         header = Adw.HeaderBar()
         menu = Gtk.MenuButton(icon_name="open-menu-symbolic")
         pop = Gio.Menu()
+        pop.append(_("Diagnóstico"), "app.diagnostics")
         pop.append(_("Sobre"), "app.about")
         menu.set_menu_model(pop)
         header.pack_end(menu)
@@ -783,10 +1009,15 @@ class MainWindow(Adw.ApplicationWindow):
         about_act = Gio.SimpleAction.new("about", None)
         about_act.connect("activate", self._on_about)
         app.add_action(about_act)
+        diag_act = Gio.SimpleAction.new("diagnostics", None)
+        diag_act.connect("activate", self._on_diagnostics)
+        app.add_action(diag_act)
 
         # ---- banner status ----
         self.banner = Adw.Banner()
         self.banner.set_revealed(False)
+        self.banner.connect("button-clicked", self._on_banner_button)
+        self._banner_mode = ""
 
         # ---- página ----
         page = Adw.PreferencesPage()
@@ -828,6 +1059,29 @@ class MainWindow(Adw.ApplicationWindow):
         pair_wrap.set_activatable(False)
         self.pair_manual_row = pair_wrap
         g_ad.add(pair_wrap)
+
+        self.clients_row = Adw.ActionRow(title=_("Clientes ativos"),
+                                         subtitle=_("—"))
+        self.clients_row.set_activatable(False)
+        g_ad.add(self.clients_row)
+
+        off_all = Gtk.Button(label=_("Desligar todos"))
+        off_all.add_css_class("destructive-action")
+        off_all.add_css_class("btn-std")
+        off_all.set_valign(Gtk.Align.CENTER)
+        off_all.connect("clicked", self._on_poweroff_all)
+        self.poweroff_all_row = Adw.ActionRow(
+            title=_("Desligar controles"),
+            subtitle=_("desliga todos os clientes wireless do dongle"))
+        self.poweroff_all_row.add_suffix(off_all)
+        self.poweroff_all_row.set_activatable(False)
+        g_ad.add(self.poweroff_all_row)
+
+        self.wakeup_switch = Adw.SwitchRow(
+            title=_("Acordar o PC pelo controle"),
+            subtitle=_("habilita wakeup no adaptador USB (xone)"))
+        self.wakeup_switch.connect("notify::active", self._on_wakeup_switch)
+        g_ad.add(self.wakeup_switch)
         page.add(g_ad)
 
         # Grupo controles
@@ -858,6 +1112,39 @@ class MainWindow(Adw.ApplicationWindow):
         self.g_bat = Adw.PreferencesGroup(title=_("Bateria"))
         self.bat_rows: list[Adw.ActionRow] = []
         page.add(self.g_bat)
+
+        # Grupo áudio/headset (xone expõe ALSA; xow geralmente não)
+        self.g_audio = Adw.PreferencesGroup(
+            title=_("Áudio e headset"),
+            description=_("sinks/sources do adaptador via PipeWire/PulseAudio"))
+        self.audio_status_row = Adw.ActionRow(
+            title=_("Áudio do Xbox"), subtitle=_("verificando…"))
+        audio_refresh = Gtk.Button(label=_("Atualizar"))
+        audio_refresh.add_css_class("btn-std")
+        audio_refresh.set_valign(Gtk.Align.CENTER)
+        audio_refresh.connect("clicked", lambda _b: self._refresh_audio())
+        self.audio_status_row.add_suffix(audio_refresh)
+        self.audio_status_row.set_activatable(False)
+        self.g_audio.add(self.audio_status_row)
+        self._audio_rows.append(self.audio_status_row)
+        page.add(self.g_audio)
+
+        # Grupo Bluetooth (xpadneo/BlueZ)
+        self.g_bt = Adw.PreferencesGroup(
+            title=_("Bluetooth"),
+            description=_("controles Xbox pareados via BlueZ (xpadneo)"))
+        self.bt_row = Adw.ActionRow(
+            title=_("Controles Bluetooth"),
+            subtitle=_("procure controles já pareados ou escaneie"))
+        bt_btn = Gtk.Button(label=_("Procurar"))
+        bt_btn.add_css_class("btn-std")
+        bt_btn.set_valign(Gtk.Align.CENTER)
+        bt_btn.connect("clicked", self._on_bt_scan)
+        self.bt_row.add_suffix(bt_btn)
+        self.bt_row.set_activatable(False)
+        self.g_bt.add(self.bt_row)
+        self._bt_rows.append(self.bt_row)
+        page.add(self.g_bt)
 
         # Grupo sistema
         g_sys = Adw.PreferencesGroup(title=_("Sistema e firmware"))
@@ -910,6 +1197,19 @@ class MainWindow(Adw.ApplicationWindow):
         int_row.set_activatable(False)
         g_sys.add(int_row)
 
+        self.rumble_weak = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0, 100, 5)
+        self.rumble_weak.set_value(self._prefs.get_int("rumble-weak"))
+        self.rumble_weak.set_draw_value(True)
+        self.rumble_weak.set_size_request(180, -1)
+        self.rumble_weak.set_valign(Gtk.Align.CENTER)
+        self.rumble_weak.connect("value-changed", self._on_rumble_weak)
+        weak_row = Adw.ActionRow(title=_("Motor fraco"),
+                                 subtitle=_("intensidade independente do motor fraco"))
+        weak_row.add_suffix(self.rumble_weak)
+        weak_row.set_activatable(False)
+        g_sys.add(weak_row)
+
         # Permissões (udev + grupo dedicado)
         self.perm_row = Adw.ActionRow(title=_("Permissões"))
         perm_box = Gtk.Box(spacing=8)
@@ -950,13 +1250,108 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Atualizações
         self.upd_row = Adw.ActionRow(title=_("Atualizações"))
+        self.upd_notes_btn = Gtk.Button(label=_("Notas"))
+        self.upd_notes_btn.add_css_class("btn-std")
+        self.upd_notes_btn.set_valign(Gtk.Align.CENTER)
+        self.upd_notes_btn.set_visible(False)
+        self.upd_notes_btn.connect("clicked", self._on_update_notes)
         self.upd_btn = Gtk.Button(label=_("Verificar"))
         self.upd_btn.add_css_class("btn-std")
         self.upd_btn.set_valign(Gtk.Align.CENTER)
         self.upd_btn.connect("clicked", self._on_check_updates)
+        self.upd_row.add_suffix(self.upd_notes_btn)
         self.upd_row.add_suffix(self.upd_btn)
         self.upd_row.set_activatable(False)
         g_sys.add(self.upd_row)
+
+        # Diagnóstico copiável (suporte)
+        self.diag_row = Adw.ActionRow(
+            title=_("Diagnóstico"),
+            subtitle=_("kernel, driver, firmware, permissões, evdev e áudio"))
+        diag_btn = Gtk.Button(label=_("Abrir"))
+        diag_btn.add_css_class("btn-std")
+        diag_btn.set_valign(Gtk.Align.CENTER)
+        diag_btn.connect("clicked", self._on_diagnostics)
+        self.diag_row.add_suffix(diag_btn)
+        self.diag_row.set_activatable(False)
+        g_sys.add(self.diag_row)
+
+        # Serviço xow (legado)
+        self.xow_row = Adw.ActionRow(title=_("Serviço xow"))
+        xow_box = Gtk.Box(spacing=6)
+        xow_box.set_valign(Gtk.Align.CENTER)
+        self.xow_start_btn = Gtk.Button(label=_("Iniciar"))
+        self.xow_stop_btn = Gtk.Button(label=_("Parar"))
+        self.xow_logs_btn = Gtk.Button(label=_("Logs"))
+        for b in (self.xow_start_btn, self.xow_stop_btn, self.xow_logs_btn):
+            b.add_css_class("btn-std")
+            b.set_valign(Gtk.Align.CENTER)
+            xow_box.append(b)
+        self.xow_start_btn.connect("clicked", lambda _b: self._xow_action("start"))
+        self.xow_stop_btn.connect("clicked", lambda _b: self._xow_action("stop"))
+        self.xow_logs_btn.connect("clicked", self._on_xow_logs)
+        self.xow_row.add_suffix(xow_box)
+        self.xow_row.set_activatable(False)
+        g_sys.add(self.xow_row)
+
+        # Preferências de comportamento
+        self.notify_switch = Adw.SwitchRow(
+            title=_("Notificações"), subtitle=_("conexão, desconexão e bateria baixa"))
+        self.notify_switch.set_active(self._prefs.get_bool("notifications"))
+        self.notify_switch.connect("notify::active", self._on_notifications)
+        g_sys.add(self.notify_switch)
+
+        self.updates_switch = Adw.SwitchRow(
+            title=_("Verificar atualizações"),
+            subtitle=_("consulta releases no GitHub ao abrir"))
+        self.updates_switch.set_active(self._prefs.get_bool("check-updates"))
+        self.updates_switch.connect("notify::active", self._on_check_updates_pref)
+        g_sys.add(self.updates_switch)
+
+        self.pair_auto_list = Gtk.StringList.new(
+            [_("Nunca"), _("30 segundos"), _("60 segundos"), _("120 segundos")])
+        self.pair_auto = Gtk.DropDown(model=self.pair_auto_list)
+        self.pair_auto.set_valign(Gtk.Align.CENTER)
+        self.pair_auto.set_selected(self._pair_auto_index())
+        self.pair_auto.connect("notify::selected", self._on_pair_auto)
+        self.pair_auto_row = Adw.ActionRow(
+            title=_("Desligar pairing automaticamente"),
+            subtitle=_("evita deixar o dongle pareável para sempre"))
+        self.pair_auto_row.add_suffix(self.pair_auto)
+        self.pair_auto_row.set_activatable(False)
+        g_sys.add(self.pair_auto_row)
+
+        self.refresh_spin = Gtk.SpinButton.new_with_range(5, 120, 5)
+        self.refresh_spin.set_value(self._prefs.get_int("refresh-interval"))
+        self.refresh_spin.set_valign(Gtk.Align.CENTER)
+        self.refresh_spin.connect("value-changed", self._on_refresh_interval)
+        self.refresh_row = Adw.ActionRow(
+            title=_("Intervalo de atualização"),
+            subtitle=_("segundos entre atualizações automáticas"))
+        self.refresh_row.add_suffix(self.refresh_spin)
+        self.refresh_row.set_activatable(False)
+        g_sys.add(self.refresh_row)
+
+        self.low_bat_spin = Gtk.SpinButton.new_with_range(5, 50, 5)
+        self.low_bat_spin.set_value(self._prefs.get_int("low-battery"))
+        self.low_bat_spin.set_valign(Gtk.Align.CENTER)
+        self.low_bat_spin.connect("value-changed", self._on_low_battery)
+        self.low_bat_row = Adw.ActionRow(
+            title=_("Aviso de bateria baixa"),
+            subtitle=_("percentual para notificar (quando confiável)"))
+        self.low_bat_row.add_suffix(self.low_bat_spin)
+        self.low_bat_row.set_activatable(False)
+        g_sys.add(self.low_bat_row)
+
+        reset_btn = Gtk.Button(label=_("Restaurar padrões"))
+        reset_btn.add_css_class("btn-std")
+        reset_btn.set_valign(Gtk.Align.CENTER)
+        reset_btn.connect("clicked", self._on_reset_prefs)
+        self.reset_row = Adw.ActionRow(
+            title=_("Preferências"), subtitle=_("voltar aos valores padrão"))
+        self.reset_row.add_suffix(reset_btn)
+        self.reset_row.set_activatable(False)
+        g_sys.add(self.reset_row)
         page.add(g_sys)
 
         scrolled = Gtk.ScrolledWindow(vexpand=True)
@@ -975,16 +1370,17 @@ class MainWindow(Adw.ApplicationWindow):
         self._fp_ctrl = None
         self._fp_bat = None
         self._update_check_id = None
+        self._auto_refresh_id = None
         GLib.idle_add(self.on_refresh, None)
-        # auto-refresh a cada 15s para bateria/pairing sem clique manual
-        self._auto_refresh_id = GLib.timeout_add_seconds(15, self._auto_refresh)
+        self._schedule_auto_refresh()
         # verificação de atualização em 2º plano (não trava a UI)
         if self._prefs.get_bool("check-updates"):
             self._update_check_id = GLib.timeout_add_seconds(3, self._auto_update_check)
         self.connect("close-request", self._on_window_close)
 
     def _on_window_close(self, *_args):
-        for attr in ("_auto_refresh_id", "_update_check_id", "_xow_countdown_id"):
+        for attr in ("_auto_refresh_id", "_update_check_id", "_xow_countdown_id",
+                     "_pair_auto_id"):
             sid = getattr(self, attr, None)
             if sid is not None:
                 try:
@@ -1002,6 +1398,390 @@ class MainWindow(Adw.ApplicationWindow):
         print(msg)
         self.toasts.add_toast(Adw.Toast.new(msg))
 
+    def copy_text(self, text: str):
+        try:
+            provider = Gdk.ContentProvider.new_for_bytes(
+                "text/plain;charset=utf-8", GLib.Bytes.new(text.encode()))
+            self.get_clipboard().set_content(provider)
+            self.toast(_("copiado para a área de transferência"))
+        except Exception as e:  # noqa: BLE001
+            self.toast(_("não foi possível copiar: {e}").format(e=e))
+
+    def _on_banner_button(self, *_args):
+        if self._banner_mode == "xow-stopped":
+            self._xow_action("start")
+        elif self._banner_mode == "no-driver":
+            self.copy_text(
+                "sudo modprobe xone_dongle\n"
+                "# se o módulo não existir, instale o driver xone "
+                "(akmods/DKMS ou COPR) e reinicie a sessão.\n"
+                "xbox-wireless-gui --diagnose")
+
+    def _notify(self, title: str, body: str = ""):
+        if not self._prefs.get_bool("notifications"):
+            return
+        try:
+            n = Gio.Notification.new(title)
+            if body:
+                n.set_body(body)
+            n.set_icon(Gio.ThemedIcon.new("input-gaming-symbolic"))
+            app = self.get_application()
+            if app is not None and app.get_is_registered():
+                app.send_notification(None, n)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _schedule_auto_refresh(self):
+        if self._auto_refresh_id is not None:
+            try:
+                GLib.source_remove(self._auto_refresh_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self._auto_refresh_id = None
+        try:
+            secs = max(5, min(120, int(self._prefs.get_int("refresh-interval"))))
+        except Exception:  # noqa: BLE001
+            secs = 15
+        self._auto_refresh_id = GLib.timeout_add_seconds(secs, self._auto_refresh)
+
+    def _on_refresh_interval(self, spin):
+        try:
+            self._prefs.set_int("refresh-interval", int(spin.get_value()))
+        except Exception:  # noqa: BLE001
+            pass
+        self._schedule_auto_refresh()
+
+    def _pair_auto_index(self) -> int:
+        val = self._prefs.get_int("pairing-auto-off")
+        return {0: 0, 30: 1, 60: 2, 120: 3}.get(val, 0)
+
+    def _on_pair_auto(self, dd, _pspec):
+        try:
+            idx = int(dd.get_selected())
+            value = (0, 30, 60, 120)[idx] if 0 <= idx < 4 else 0
+            self._prefs.set_int("pairing-auto-off", value)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _on_notifications(self, sw, _pspec):
+        try:
+            self._prefs.set_bool("notifications", bool(sw.get_active()))
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _on_check_updates_pref(self, sw, _pspec):
+        enabled = bool(sw.get_active())
+        self._prefs.set_bool("check-updates", enabled)
+        if not enabled and self._update_check_id is not None:
+            try:
+                GLib.source_remove(self._update_check_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self._update_check_id = None
+        elif enabled and self._update_check_id is None:
+            self._update_check_id = GLib.timeout_add_seconds(
+                3, self._auto_update_check)
+
+    def _on_low_battery(self, spin):
+        try:
+            self._prefs.set_int("low-battery", int(spin.get_value()))
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _on_reset_prefs(self, _b):
+        for key, value in prefs.DEFAULTS.items():
+            if isinstance(value, bool):
+                self._prefs.set_bool(key, value)
+            elif isinstance(value, float):
+                self._prefs.set_double(key, value)
+            elif isinstance(value, int):
+                self._prefs.set_int(key, value)
+            else:
+                self._prefs.set_string(key, value)
+        self.notify_switch.set_active(self._prefs.get_bool("notifications"))
+        self.updates_switch.set_active(self._prefs.get_bool("check-updates"))
+        self.pair_auto.set_selected(self._pair_auto_index())
+        self.refresh_spin.set_value(self._prefs.get_int("refresh-interval"))
+        self.low_bat_spin.set_value(self._prefs.get_int("low-battery"))
+        self.rumble_dur.set_value(self._prefs.get_int("rumble-duration"))
+        self.rumble_int.set_value(self._prefs.get_int("rumble-strong"))
+        self.rumble_weak.set_value(self._prefs.get_int("rumble-weak"))
+        self._schedule_auto_refresh()
+        self.toast(_("preferências restauradas"))
+
+    # ---- energia / wakeup ----
+    def _refresh_wakeup(self):
+        try:
+            val = xone.get_wakeup()
+        except Exception:  # noqa: BLE001
+            val = None
+        if val is None:
+            return
+        self._updating_wakeup = True
+        try:
+            self.wakeup_switch.set_active(bool(val))
+        finally:
+            self._updating_wakeup = False
+
+    def _on_wakeup_switch(self, sw, _pspec):
+        if getattr(self, "_updating_wakeup", False):
+            return
+        enabled = bool(sw.get_active())
+
+        def work():
+            ok, msg = xone.set_wakeup(enabled)
+            GLib.idle_add(self.toast, msg)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_poweroff_all(self, _b):
+        self._confirm_poweroff(-1, _("todos os controles"))
+
+    def poweroff_controller(self, index: int, led_id: str | None,
+                            label: str):
+        self._confirm_poweroff(index, label)
+
+    def _confirm_poweroff(self, index: int, label: str):
+        dlg = Adw.AlertDialog(
+            heading=_("Desligar {l}?").format(l=label),
+            body=_("O controle só volta ao apertar o botão Xbox. "
+                   "Nenhum dado é apagado."))
+        dlg.add_response("cancel", _("Cancelar"))
+        dlg.add_response("ok", _("Desligar"))
+        dlg.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
+        dlg.connect("response",
+                    lambda d, r: self._do_poweroff(d, r, index))
+        dlg.present(self)
+
+    def _do_poweroff(self, _dlg, resp: str, index: int):
+        if resp != "ok":
+            return
+        dongle = self._selected_dongle()
+
+        def work():
+            ok, msg = xone.poweroff(index, dongle)
+            GLib.idle_add(self._poweroff_done, ok, msg)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _poweroff_done(self, ok: bool, msg: str):
+        self.toast(msg)
+        if ok:
+            self.on_refresh()
+        return False
+
+    def rename_controller(self, serial: str, current: str):
+        dlg = Adw.AlertDialog(
+            heading=_("Renomear controle"),
+            body=_("O nome fica salvo pelo serial {s}.").format(s=serial))
+        entry = Gtk.Entry()
+        entry.set_text(current if current != _("Controle") else "")
+        entry.set_placeholder_text(_("Ex.: Controle da sala"))
+        dlg.set_extra_child(entry)
+        dlg.add_response("cancel", _("Cancelar"))
+        dlg.add_response("ok", _("Salvar"))
+        dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+
+        def done(_d, resp):
+            if resp == "ok":
+                profiles.set_name(serial, entry.get_text())
+                self.on_refresh()
+        dlg.connect("response", done)
+        dlg.present(self)
+
+    # ---- diagnóstico / logs ----
+    def _on_diagnostics(self, *_args):
+        self.toast(_("coletando diagnóstico…"))
+
+        def work():
+            try:
+                text = diagnostics.format_markdown()
+            except Exception as e:  # noqa: BLE001
+                text = _("falha ao coletar diagnóstico: {e}").format(e=e)
+            GLib.idle_add(self._show_text_window,
+                          _("Diagnóstico"), text)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_text_window(self, title: str, text: str):
+        win = Adw.Window(transient_for=self, title=title)
+        win.set_default_size(720, 560)
+        header = Adw.HeaderBar()
+        copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.set_tooltip_text(_("Copiar"))
+        copy_btn.connect("clicked", lambda _b: self.copy_text(text))
+        header.pack_end(copy_btn)
+        view = Gtk.TextView()
+        view.set_editable(False)
+        view.set_monospace(True)
+        view.get_buffer().set_text(text)
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_child(view)
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        body.append(header)
+        body.append(scrolled)
+        win.set_content(body)
+        win.present()
+        return False
+
+    def _on_xow_logs(self, _b):
+        def work():
+            text = xow.logs(120)
+            GLib.idle_add(self._show_text_window, _("Logs do xow"), text)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _xow_action(self, action: str):
+        def work():
+            ok, msg = xow.service_control(action)
+            GLib.idle_add(self.toast, msg)
+            GLib.idle_add(lambda: self.on_refresh() or False)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _refresh_xow_row(self, info=None):
+        try:
+            active = xow.service_active()
+        except Exception:  # noqa: BLE001
+            active = False
+        state = _("ativo") if active else _("parado")
+        installed = getattr(info, "xow_installed", None)
+        try:
+            available = xow.available()
+        except Exception:  # noqa: BLE001
+            available = False
+        self.xow_row.set_visible(bool(installed) or available)
+        if installed is False:
+            self.xow_row.set_subtitle(_("xow não instalado"))
+        else:
+            self.xow_row.set_subtitle(_("serviço {s}").format(s=state))
+        self.xow_start_btn.set_sensitive(not active)
+        self.xow_stop_btn.set_sensitive(active)
+
+    # ---- bluetooth ----
+    def _on_bt_scan(self, _b):
+        self.bt_row.set_subtitle(_("procurando controles Bluetooth…"))
+
+        def work():
+            try:
+                devices = bluetooth.xbox_devices()
+            except Exception as e:  # noqa: BLE001
+                devices = []
+                GLib.idle_add(self.toast, str(e))
+            GLib.idle_add(self._show_bt_devices, devices)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_bt_devices(self, devices: list[dict]):
+        self.bt_row.set_subtitle(
+            _("{n} controle(s) Bluetooth pareado(s)").format(n=len(devices))
+            if devices else _("nenhum controle Bluetooth pareado"))
+        if not devices:
+            self.toast(_("Nenhum controle Bluetooth pareado. "
+                         "Pareie pelo bluetoothctl/Configurações."))
+            return False
+        win = Adw.Window(transient_for=self, title=_("Controles Bluetooth"))
+        win.set_default_size(520, 380)
+        header = Adw.HeaderBar()
+        page = Adw.PreferencesPage()
+        group = Adw.PreferencesGroup(title=_("Pareados no BlueZ"))
+        for d in devices:
+            row = Adw.ActionRow(title=d["name"], subtitle=d["mac"])
+            conn = Gtk.Button(label=_("Conectar"))
+            conn.add_css_class("btn-std")
+            conn.connect("clicked", lambda _b, mac=d["mac"]: self._bt_connect(mac))
+            row.add_suffix(conn)
+            group.add(row)
+        page.add(group)
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_child(page)
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        body.append(header)
+        body.append(scrolled)
+        win.set_content(body)
+        win.present()
+        return False
+
+    def _bt_connect(self, mac: str):
+        def work():
+            ok, msg = bluetooth.connect(mac)
+            if ok:
+                bluetooth.trust(mac)
+            GLib.idle_add(self.toast, msg)
+            GLib.idle_add(lambda: self.on_refresh() or False)
+        threading.Thread(target=work, daemon=True).start()
+
+    # ---- áudio ----
+    def _refresh_audio(self):
+        try:
+            st = audio.status()
+        except Exception as e:  # noqa: BLE001
+            st = {"available": False, "cards": [], "sinks": [], "sources": [],
+                  "error": str(e)}
+        for row in self._audio_rows[1:]:
+            try:
+                self.g_audio.remove(row)
+            except Exception:  # noqa: BLE001
+                pass
+        self._audio_rows = self._audio_rows[:1]
+        if not st.get("available"):
+            self.audio_status_row.set_subtitle(
+                _("pactl não encontrado (PipeWire/PulseAudio)"))
+            return
+        sinks = st.get("sinks") or []
+        sources = st.get("sources") or []
+        cards = st.get("cards") or []
+        if not (sinks or sources or cards):
+            self.audio_status_row.set_subtitle(
+                _("nenhum áudio Xbox detectado (headset conectado?)"))
+            return
+        self.audio_status_row.set_subtitle(
+            _("{c} card(s), {s} sink(s), {m} source(s)").format(
+                c=len(cards), s=len(sinks), m=len(sources)))
+        for kind, items in (("sink", sinks), ("source", sources)):
+            for it in items:
+                name = it["name"]
+                row = Adw.ActionRow(
+                    title=it["name"].split(".")[-1],
+                    subtitle=f"{kind} • {name}")
+                default_btn = Gtk.Button(label=_("Padrão"))
+                default_btn.add_css_class("btn-std")
+                default_btn.connect(
+                    "clicked",
+                    lambda _b, k=kind, n=name: self._audio_default(k, n))
+                vol = Gtk.Scale.new_with_range(
+                    Gtk.Orientation.HORIZONTAL, 0, 150, 5)
+                vol.set_size_request(140, -1)
+                vol.set_valign(Gtk.Align.CENTER)
+                vol.connect("value-changed",
+                            lambda s, k=kind, n=name: self._audio_volume(
+                                k, n, int(s.get_value())))
+                mute = Gtk.Switch()
+                mute.connect("notify::active",
+                             lambda s, k=kind, n=name: self._audio_mute(
+                                 k, n, bool(s.get_active())))
+                row.add_suffix(default_btn)
+                row.add_suffix(vol)
+                row.add_suffix(mute)
+                row.set_activatable(False)
+                self.g_audio.add(row)
+                self._audio_rows.append(row)
+        return False
+
+    def _audio_default(self, kind: str, name: str):
+        def work():
+            ok, msg = audio.set_default(kind, name)
+            GLib.idle_add(self.toast, msg)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _audio_volume(self, kind: str, name: str, percent: int):
+        def work():
+            ok, msg = audio.set_volume(kind, name, percent)
+            if not ok:
+                GLib.idle_add(self.toast, msg)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _audio_mute(self, kind: str, name: str, muted: bool):
+        def work():
+            ok, msg = audio.set_mute(kind, name, muted)
+            if not ok:
+                GLib.idle_add(self.toast, msg)
+        threading.Thread(target=work, daemon=True).start()
+
     def _selected_dongle(self) -> str | None:
         sel = self._prefs.get_string("selected-dongle")
         if sel and sel in self._dongles:
@@ -1017,16 +1797,17 @@ class MainWindow(Adw.ApplicationWindow):
             self.on_refresh()
 
     def _on_about(self, *_args):
-        dlg = Adw.AboutWindow(
-            transient_for=self, application_name="Xbox Wireless GUI",
+        dlg = Adw.AboutDialog(
+            application_name="Xbox Wireless GUI",
             version=APP_VERSION,
-            comments=_("Gerencie o Xbox Wireless Adapter e controles no Fedora (xone + xow)."),
+            comments=_("Gerencie o Xbox Wireless Adapter, controles, LED, "
+                       "bateria, áudio e diagnóstico no Fedora (xone + xow)."),
             website="https://github.com/viniciussralves/xbox-wireless-gui",
             issue_url="https://github.com/viniciussralves/xbox-wireless-gui/issues",
             developers=["theone <viniciussralves92@gmail.com>"],
             copyright="© 2026 theone",
             license_type=Gtk.License.GPL_3_0)
-        dlg.present()
+        dlg.present(self)
 
     def _on_copy_fw(self, _b):
         cmd = ("sudo xow-get-firmware.sh" if self._driver_name() == "xow"
@@ -1053,8 +1834,7 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_fw_install(self, _b):
         if self._fw_busy or getattr(self, "_fw_dialog", None) is not None:
             return
-        dlg = Adw.MessageDialog(
-            transient_for=self,
+        dlg = Adw.AlertDialog(
             heading=_("Instalar firmware do dongle?"),
             body=_("Roda o script oficial com pkexec. O firmware é sujeito aos "
                    "Termos de Uso da Microsoft, precisa de internet e pode levar minutos."))
@@ -1063,7 +1843,7 @@ class MainWindow(Adw.ApplicationWindow):
         dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
         dlg.connect("response", self._on_fw_confirm)
         self._fw_dialog = dlg
-        dlg.present()
+        dlg.present(self)
 
     def _on_fw_confirm(self, _dlg, resp: str):
         self._fw_dialog = None
@@ -1130,6 +1910,14 @@ class MainWindow(Adw.ApplicationWindow):
             v = int(scale.get_value())
             self._prefs.set_int("rumble-strong", v)
             self._prefs.set_int("rumble-weak", v)
+            if hasattr(self, "rumble_weak"):
+                self.rumble_weak.set_value(v)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _on_rumble_weak(self, scale):
+        try:
+            self._prefs.set_int("rumble-weak", int(scale.get_value()))
         except Exception:  # noqa: BLE001
             pass
 
@@ -1137,16 +1925,23 @@ class MainWindow(Adw.ApplicationWindow):
         def work():
             res = updates.check(APP_VERSION)
             if res.get("newer"):
-                GLib.idle_add(self._show_update, res["tag"], res.get("url", ""))
+                GLib.idle_add(self._show_update, res["tag"],
+                              res.get("url", ""), res.get("body", ""))
         threading.Thread(target=work, daemon=True).start()
         return False  # roda uma vez
 
-    def _show_update(self, tag: str, url: str):
+    def _show_update(self, tag: str, url: str, body: str = ""):
         self._upd_url = url
+        self._upd_body = body
         self.upd_row.set_subtitle(_("nova versão disponível: {t}").format(t=tag))
         self.upd_btn.set_label(_("Abrir"))
+        self.upd_notes_btn.set_visible(bool(body))
         self.toast(_("Nova versão {t} disponível").format(t=tag))
         return False
+
+    def _on_update_notes(self, _b):
+        body = getattr(self, "_upd_body", "") or _("sem notas do release")
+        self._show_text_window(_("Notas da atualização"), body)
 
     def _on_check_updates(self, _b):
         if getattr(self, "_upd_url", ""):
@@ -1162,7 +1957,8 @@ class MainWindow(Adw.ApplicationWindow):
     def _check_done(self, res: dict):
         self.upd_btn.set_sensitive(True)
         if res.get("newer"):
-            self._show_update(res["tag"], res.get("url", ""))
+            self._show_update(res["tag"], res.get("url", ""),
+                              res.get("body", ""))
         else:
             self._upd_url = ""
             self.upd_btn.set_label(_("Verificar"))
@@ -1235,29 +2031,40 @@ class MainWindow(Adw.ApplicationWindow):
                 finally:
                     self._loading_dongle = False
 
+            state = getattr(info, "state", "") or ""
             if info.name == "xone":
                 self._cancel_xow_countdown()
                 self.driver_row.set_title(_("Driver xone • dongle conectado"))
+                version = getattr(info, "xone_version", "") or ""
+                ver_txt = f" • xone {version}" if version else ""
                 if pairing:
                     if self._pair_since is None:
                         self._pair_since = time.time()
                     since = time.strftime(
                         "%H:%M:%S", time.localtime(self._pair_since))
                     self.driver_row.set_subtitle(
-                        _("{d} • pairing=ON (desde {h})").format(d=chosen, h=since))
+                        _("{d} • pairing=ON (desde {h}){v}").format(
+                            d=chosen, h=since, v=ver_txt))
+                    self._start_pair_auto_off()
                 else:
                     self._pair_since = None
+                    self._cancel_pair_auto_off()
                     self.driver_row.set_subtitle(
-                        _("{d} • pairing=OFF").format(d=chosen))
+                        _("{d} • pairing=OFF{v}").format(d=chosen, v=ver_txt))
                 self.pair_switch.set_visible(True)
                 self.pair_manual_row.set_visible(False)
                 self._updating_switch = True
                 self.pair_switch.set_active(bool(pairing))
                 self._updating_switch = False
+                self._banner_mode = ""
                 self.banner.set_revealed(False)
             elif info.name == "xow":
                 self._pair_since = None
-                self.driver_row.set_title(_("Driver xow (legado)"))
+                self._cancel_pair_auto_off()
+                stopped = state == "xow-stopped"
+                self.driver_row.set_title(
+                    _("Driver xow (serviço parado)") if stopped
+                    else _("Driver xow (legado)"))
                 if self._xow_countdown_id is not None:
                     self.driver_row.set_subtitle(
                         _("xow em pairing ({n}s restantes)").format(n=self._xow_left))
@@ -1265,30 +2072,127 @@ class MainWindow(Adw.ApplicationWindow):
                     self.driver_row.set_subtitle(
                         _("serviço ativo: {s}").format(s=xow.service_active()))
                     self.pair_btn.set_label(_("Ativar pairing (xow)"))
-                    self.pair_btn.set_sensitive(True)
+                    self.pair_btn.set_sensitive(not stopped)
                 self.pair_switch.set_visible(False)
-                self.pair_manual_row.set_visible(True)
-                self.banner.set_revealed(False)
+                self.pair_manual_row.set_visible(not stopped)
+                self.banner.set_revealed(stopped)
+                if stopped:
+                    self._banner_mode = "xow-stopped"
+                    self.banner.set_title(_("Serviço xow está parado"))
+                    self.banner.set_button_label(_("Iniciar xow"))
             else:
                 self._cancel_xow_countdown()
+                self._cancel_pair_auto_off()
                 self._pair_since = None
-                self.driver_row.set_title(_("Nenhum dongle detectado"))
-                self.driver_row.set_subtitle(_("plugue o adaptador 045e:02e6/02d1"))
+                no_driver = state == "dongle-no-driver"
+                self.driver_row.set_title(
+                    _("Dongle detectado — driver xone inativo") if no_driver
+                    else _("Nenhum dongle detectado"))
+                self.driver_row.set_subtitle(
+                    info.detail if no_driver
+                    else _("plugue o adaptador 045e:02e6/02d1"))
                 self.pair_switch.set_visible(False)
                 self.pair_manual_row.set_visible(False)
                 self.pair_btn.set_label(_("Ativar pairing (xow)"))
                 self.pair_btn.set_sensitive(True)
-                self.banner.set_title(_("Adaptador não encontrado"))
-                self.banner.set_button_label(None)
+                self._banner_mode = "no-driver" if no_driver else ""
+                self.banner.set_title(
+                    _("Dongle USB sem driver xone") if no_driver
+                    else _("Adaptador não encontrado"))
+                self.banner.set_button_label(
+                    _("Copiar comando") if no_driver else None)
                 self.banner.set_revealed(True)
+
+            try:
+                clients = xone.active_clients(chosen)
+                count = clients.get("count", 0) if isinstance(clients, dict) else 0
+                slots = clients.get("slots", []) if isinstance(clients, dict) else []
+                if not isinstance(slots, (list, tuple, set)):
+                    slots = []
+                self.clients_row.set_subtitle(
+                    _("{n} cliente(s) • slots {s}").format(
+                        n=count, s=sorted(slots)))
+            except Exception:  # noqa: BLE001
+                self.clients_row.set_subtitle("—")
+            self._refresh_wakeup()
+            self._refresh_xow_row(info)
 
             bats = battery.list_batteries()
             self._refresh_controllers(bats)
             self._refresh_batteries(bats)
             self._refresh_firmware_row()
             self._refresh_perm_row()
+            if not getattr(self, "_audio_loaded", False):
+                self._audio_loaded = True
+                self._refresh_audio()
+            self._check_connection_notifications(bats)
+            self._check_low_battery(bats)
         finally:
             self.refresh_btn.set_sensitive(True)
+
+    def _start_pair_auto_off(self):
+        if self._pair_auto_id is not None:
+            return
+        try:
+            seconds = int(self._prefs.get_int("pairing-auto-off"))
+        except Exception:  # noqa: BLE001
+            seconds = 0
+        if seconds <= 0:
+            return
+        self._pair_auto_id = GLib.timeout_add_seconds(seconds, self._pair_auto_off)
+
+    def _cancel_pair_auto_off(self):
+        if self._pair_auto_id is not None:
+            try:
+                GLib.source_remove(self._pair_auto_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self._pair_auto_id = None
+
+    def _pair_auto_off(self):
+        self._pair_auto_id = None
+        dongle = self._selected_dongle()
+
+        def work():
+            ok, msg = xone.set_pairing(False, dongle)
+            GLib.idle_add(self.toast, msg)
+            GLib.idle_add(lambda: self.on_refresh() or False)
+        threading.Thread(target=work, daemon=True).start()
+        return False
+
+    def _check_connection_notifications(self, bats: list[dict]):
+        current = {c.serial or c.get_title() for c in self.cards}
+        if self._last_conn is not None and current != self._last_conn:
+            added = current - self._last_conn
+            removed = self._last_conn - current
+            if added:
+                self._notify(_("Controle conectado"),
+                             ", ".join(sorted(added)))
+            if removed:
+                self._notify(_("Controle desconectado"),
+                             ", ".join(sorted(removed)))
+        self._last_conn = current
+
+    def _check_low_battery(self, bats: list[dict]):
+        threshold = self._prefs.get_int("low-battery")
+        for b in bats:
+            key = b.get("serial") or b.get("device") or "?"
+            low = False
+            if battery_is_reliable(b):
+                try:
+                    low = int(b.get("percentage", 100)) <= threshold
+                except (TypeError, ValueError):
+                    low = False
+            else:
+                low = (b.get("level_en") or "").lower() in ("low", "critical")
+            if low and key not in self._low_notified:
+                self._low_notified.add(key)
+                self._notify(_("Bateria baixa"),
+                             _("{d}: {l}").format(
+                                 d=b.get("device", "?"),
+                                 l=battery_level_text(b) or "?"))
+            elif not low:
+                self._low_notified.discard(key)
 
     def _refresh_controllers(self, bats: list[dict] | None = None):
         ctrls = xone.list_controllers()
@@ -1297,9 +2201,11 @@ class MainWindow(Adw.ApplicationWindow):
             bats = battery.list_batteries()
 
         fp = repr([(c.get("id"), c.get("mode"), c.get("brightness")) for c in ctrls]
-                  + [(p.get("path"), p.get("name"), p.get("phys")) for p in pads]
+                  + [(p.get("path"), p.get("name"), p.get("phys"),
+                      p.get("uniq")) for p in pads]
                   + [(b.get("device"), b.get("percentage"), b.get("state"),
-                      b.get("level"), b.get("time_empty"), b.get("time_full"))
+                      b.get("level"), b.get("time_empty"), b.get("time_full"),
+                      b.get("serial"), b.get("is_reliable"))
                      for b in bats])
         if fp == self._fp_ctrl and self.cards:
             return  # nada mudou: evita reconstruir e roubar o foco (auto-refresh)
@@ -1328,8 +2234,15 @@ class MainWindow(Adw.ApplicationWindow):
 
         used_bats: set[int] = set()
 
-        def take_battery(led_id: str | None) -> dict | None:
-            # 1) casa pelo native_path (ex.: led 'gip0.0:white:status' <-> 'gip0.0')
+        def take_battery(led_id: str | None,
+                         serial: str | None = None) -> dict | None:
+            # 1) serial é a chave estável (evdev uniq == UPower serial)
+            if serial:
+                for i, b in enumerate(bats):
+                    if i not in used_bats and (b.get("serial") or "") == serial:
+                        used_bats.add(i)
+                        return b
+            # 2) casa pelo native_path (ex.: led 'gip0.0:white:status' <-> 'gip0.0')
             if led_id:
                 short = led_id.split(":")[0]
                 for i, b in enumerate(bats):
@@ -1339,7 +2252,7 @@ class MainWindow(Adw.ApplicationWindow):
                     if np and (led_id.startswith(np) or short == np):
                         used_bats.add(i)
                         return b
-            # 2) sobras, na ordem
+            # 3) sobras, na ordem
             for i, b in enumerate(bats):
                 try:
                     pct = float(b.get("percentage", -1))
@@ -1398,33 +2311,45 @@ class MainWindow(Adw.ApplicationWindow):
                               "led": c["id"],
                               "led_info": c,
                               "path": pad["path"] if pad else None,
-                              "pad_name": pad["name"] if pad else None})
+                              "pad_name": pad["name"] if pad else None,
+                              "serial": (pad.get("uniq") or "") if pad else ""})
             # evdev real sem LED correspondente (ex.: xow/Bluetooth): mostra à parte
             used_paths = set(used_pad_paths)
             for p in real_pads:
                 if p["path"] not in used_paths:
                     items.append({"title": p["name"], "sub": p["path"],
                                   "led": None, "path": p["path"],
-                                  "pad_name": p["name"]})
+                                  "pad_name": p["name"],
+                                  "serial": p.get("uniq") or ""})
         else:
             items = []
             for p in real_pads or virtual_pads:
                 tag = _(" (virtual)") if is_virtual_pad(p.get("name")) else ""
                 items.append({"title": f"{p['name']}{tag}", "sub": p["path"],
                               "led": None, "path": p["path"],
-                              "pad_name": p["name"]})
+                              "pad_name": p["name"],
+                              "serial": p.get("uniq") or ""})
 
         has_any = bool(items)
         self.empty_wrap.set_visible(not has_any)
 
         for it in items:
-            card = ControllerCard(it["title"], it["sub"], it["led"], self,
-                                  pad_path=it["path"], led_info=it.get("led_info"))
+            serial = it.get("serial") or ""
+            custom = profiles.name_of(serial) if serial else ""
+            card = ControllerCard(
+                it["title"], it["sub"], it["led"], self,
+                pad_path=it["path"], led_info=it.get("led_info"),
+                serial=serial, custom_name=custom,
+                connection=connection_kind(it["path"], it["led"]))
             if it["title"] in expanded:
                 card.set_expanded(expanded[it["title"]])
-            b = take_battery(it["led"])
+            b = take_battery(it["led"], serial)
             if b:
                 card.set_battery_info(b)
+            if serial and serial not in self._applied_profiles \
+                    and profiles.led_of(serial):
+                self._applied_profiles.add(serial)
+                card.apply_saved_profile()
             self.g_ctrl.add(card)
             self.cards.append(card)
 
@@ -1432,7 +2357,8 @@ class MainWindow(Adw.ApplicationWindow):
         if blist is None:
             blist = battery.list_batteries()
         fp = repr([(b.get("device"), b.get("percentage"), b.get("state"),
-                    b.get("level"), b.get("time_empty"), b.get("time_full"))
+                    b.get("level"), b.get("time_empty"), b.get("time_full"),
+                    b.get("serial"), b.get("is_reliable"))
                    for b in blist])
         # os cartões já mostram a bateria; evita duplicar a seção inteira
         self.g_bat.set_visible(not bool(self.cards))
@@ -1443,10 +2369,8 @@ class MainWindow(Adw.ApplicationWindow):
             self.g_bat.remove(r)
         self.bat_rows.clear()
         for b in blist:
-            try:
-                pct = int(b["percentage"])
-            except (ValueError, TypeError):
-                pct = -1
+            pct = battery_pct(b)
+            reliable = battery_is_reliable(b)
             bar = Gtk.LevelBar(min_value=0, max_value=100)
             bar.set_hexpand(True)
             bar.set_valign(Gtk.Align.CENTER)
@@ -1454,7 +2378,11 @@ class MainWindow(Adw.ApplicationWindow):
             pct_lbl.add_css_class("bat-pct")
             if pct >= 0:
                 style_bat_bar(bar, pct)
-                pct_lbl.set_markup(f'<b>{pct}%</b>')
+                if reliable:
+                    pct_lbl.set_markup(f'<b>{pct}%</b>')
+                else:
+                    pct_lbl.set_markup(
+                        f'<b>{battery_level_text(b) or f"≈{pct}%"}</b>')
             else:
                 pct_lbl.set_markup('<b>—</b>')
             suffix = Gtk.Box(spacing=10)
@@ -1466,6 +2394,8 @@ class MainWindow(Adw.ApplicationWindow):
             parts = [state, _("nível {lvl}").format(lvl=lvl)] if lvl and lvl != "—" else [state]
             if detail and detail != state:
                 parts.append(detail)
+            if not reliable:
+                parts.append(_("estimativa pelo nível"))
             sub = " • ".join(s for s in parts if s) if pct >= 0 else state
             row = Adw.ActionRow(title=b["device"], subtitle=sub)
             row.add_prefix(Gtk.Image.new_from_icon_name(
@@ -1535,17 +2465,21 @@ class MainWindow(Adw.ApplicationWindow):
             GLib.idle_add(lambda: self.on_refresh() or False)
         threading.Thread(target=work, daemon=True).start()
 
-    def vibrate_first(self):
+    def vibrate_first(self, motor: str = "both"):
         pads = rumble.find_gamepads()
         if not pads:
             self.toast(_("Nenhum gamepad evdev encontrado"))
             return
         real = [p for p in pads if not is_virtual_pad(p.get("name"))]
-        self.vibrate_path((real or pads)[0]["path"])
+        self.vibrate_path((real or pads)[0]["path"], motor=motor)
 
-    def vibrate_path(self, path: str):
+    def vibrate_path(self, path: str, motor: str = "both"):
         dur = self._prefs.get_int("rumble-duration")
         strong, weak = prefs.rumble_magnitudes(self._prefs)
+        if motor == "strong":
+            weak = 0
+        elif motor == "weak":
+            strong = 0
 
         def work():
             ok, msg = rumble.rumble(path, duration_ms=dur,
@@ -1582,6 +2516,92 @@ class MainWindow(Adw.ApplicationWindow):
         TesterWindow(self, initial_path=pad_path).present()
 
 
+def _status_dict() -> dict:
+    info = detector.detect()
+    return {
+        "app_version": APP_VERSION,
+        "driver": info.name,
+        "state": info.state,
+        "detail": info.detail,
+        "dongle": info.dongle_sysfs,
+        "xone_version": info.xone_version,
+        "pairing": xone.get_pairing(info.dongle_sysfs),
+        "controllers": xone.list_controllers(),
+        "batteries": battery.list_batteries(),
+        "active_clients": xone.active_clients(info.dongle_sysfs),
+    }
+
+
+def _cli(argv: list[str]) -> int | None:
+    """CLI mínima para scripts/waybar; sem argumentos abre a GUI."""
+    parser = argparse.ArgumentParser(
+        prog="xbox-wireless-gui", add_help=False,
+        description="Xbox Wireless GUI — CLI de status/controle")
+    parser.add_argument("--status", action="store_true")
+    parser.add_argument("--diagnose", action="store_true")
+    parser.add_argument("--version", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--pair", choices=("on", "off"))
+    parser.add_argument("--poweroff", nargs="?", const="-1")
+    parser.add_argument("--led", nargs=3, metavar=("ID", "MODE", "BRILHO"))
+    parser.add_argument("-h", "--help", action="store_true")
+    try:
+        ns, _unknown = parser.parse_known_args(argv)
+    except SystemExit:
+        return 2
+    if ns.help:
+        parser.print_help()
+        return 0
+    if ns.version:
+        print(f"xbox-wireless-gui {APP_VERSION}")
+        return 0
+    if ns.status:
+        data = _status_dict()
+        if ns.json:
+            print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+        else:
+            print(f"driver: {data['driver']} ({data['state']})")
+            print(f"dongle: {data['dongle'] or '—'}")
+            print(f"pairing: {data['pairing']}")
+            print(f"controles: {len(data['controllers'])}")
+            for c in data["controllers"]:
+                print(f"  - {c.get('id')} mode={c.get('mode')} "
+                      f"brilho={c.get('brightness')}/{c.get('max_brightness')}")
+            for b in data["batteries"]:
+                if battery_is_reliable(b):
+                    val = f"{b.get('percentage')}%"
+                else:
+                    val = f"nível {b.get('level') or '?'}"
+                print(f"  bateria: {b.get('device')} {val}")
+        return 0
+    if ns.diagnose:
+        print(diagnostics.format_markdown())
+        return 0
+    if ns.pair:
+        info = detector.detect()
+        if info.name == "xone":
+            ok, msg = xone.set_pairing(ns.pair == "on", info.dongle_sysfs)
+        elif info.name == "xow" or xow.available():
+            if ns.pair == "off":
+                ok, msg = False, _("xow não desliga o pairing manualmente "
+                                   "(o serviço encerra sozinho)")
+            else:
+                ok, msg = xow.set_pairing()
+        else:
+            ok, msg = False, _("sem driver para parear")
+        print(msg)
+        return 0 if ok else 1
+    if ns.poweroff is not None:
+        ok, msg = xone.poweroff(int(ns.poweroff))
+        print(msg)
+        return 0 if ok else 1
+    if ns.led:
+        ok, msg = xone.set_led(*ns.led)
+        print(msg)
+        return 0 if ok else 1
+    return None
+
+
 class App(Adw.Application):
     def __init__(self):
         GLib.set_prgname(APP_ID)
@@ -1598,6 +2618,9 @@ class App(Adw.Application):
 
 
 def main() -> int:
+    code = _cli(sys.argv[1:])
+    if code is not None:
+        return code
     app = App()
     return app.run(sys.argv)
 

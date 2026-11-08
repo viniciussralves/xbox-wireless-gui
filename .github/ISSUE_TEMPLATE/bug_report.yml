@@ -1,0 +1,47 @@
+name: Bug
+description: Reporte um problema de funcionamento
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar! Anexe o relatório de **Diagnóstico** do app
+        (menu ⋯ → Diagnóstico → copiar) sempre que possível.
+  - type: input
+    id: version
+    attributes:
+      label: Versão do app
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Distro e kernel
+      placeholder: "Fedora 44, 6.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: driver
+    attributes:
+      label: Driver
+      options:
+        - xone
+        - xow
+        - xpadneo / Bluetooth
+        - nenhum
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu?
+      description: Comportamento esperado x observado, passos para reproduzir.
+    validations:
+      required: true
+  - type: textarea
+    id: diag
+    attributes:
+      label: Diagnóstico
+      description: Cole aqui a saída de `xbox-wireless-gui --diagnose`.
+      render: markdown

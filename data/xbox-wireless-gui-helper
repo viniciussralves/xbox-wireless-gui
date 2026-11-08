@@ -43,11 +43,54 @@ case "${1:-}" in
         esac
         base="/sys/class/leds/$id"
         [ -d "$base" ] || die "LED não existe"
-        [ -f "$base/mode" ] && [ -f "$base/brightness" ] || die "LED incompleto"
+        if [ ! -f "$base/mode" ] || [ ! -f "$base/brightness" ]; then
+            die "LED incompleto"
+        fi
         max=$(cat "$base/max_brightness" 2>/dev/null || echo 255)
         [ "$brightness" -le "$max" ] || die "brilho fora da faixa"
         printf '%s\n' "$mode" > "$base/mode"
         printf '%s\n' "$brightness" > "$base/brightness"
+        ;;
+    poweroff)
+        [ "$#" -eq 3 ] || die "uso: poweroff <poweroff> <0-15|-1>"
+        path=$2
+        index=$3
+        case "$path" in
+            *..*) die "caminho de poweroff inválido" ;;
+            /sys/bus/usb/drivers/xone-dongle/*/poweroff) ;;
+            *) die "caminho de poweroff inválido" ;;
+        esac
+        case "$index" in
+            -1|0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15) ;;
+            *) die "índice de cliente inválido" ;;
+        esac
+        [ -f "$path" ] || die "poweroff não existe"
+        printf '%s\n' "$index" > "$path"
+        ;;
+    wakeup)
+        [ "$#" -eq 3 ] || die "uso: wakeup <wakeup> on|off"
+        path=$2
+        state=$3
+        case "$path" in
+            *..*) die "caminho de wakeup inválido" ;;
+            /sys/bus/usb/devices/*/power/wakeup) ;;
+            *) die "caminho de wakeup inválido" ;;
+        esac
+        case "$state" in
+            on) value=enabled ;;
+            off) value=disabled ;;
+            *) die "estado de wakeup inválido" ;;
+        esac
+        [ -f "$path" ] || die "wakeup não existe"
+        printf '%s\n' "$value" > "$path"
+        ;;
+    xow)
+        [ "$#" -eq 2 ] || die "uso: xow start|stop|restart|enable|disable"
+        case "$2" in
+            start|stop|restart|enable|disable) ;;
+            *) die "ação de xow inválida" ;;
+        esac
+        systemctl "$2" xow
         ;;
     permissions)
         [ "$#" -eq 2 ] || die "uso: permissions <usuário>"
@@ -66,9 +109,9 @@ case "${1:-}" in
         udevadm trigger --action=add --subsystem-match=input
         usermod -aG xboxwireless "$user"
         chgrp xboxwireless /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode \
-            /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || true
+            /sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null || true
         chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode \
-            /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || true
+            /sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null || true
         ;;
     *)
         die "subcomando desconhecido"

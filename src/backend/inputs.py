@@ -6,7 +6,7 @@ from __future__ import annotations
 
 
 BUTTONS = ("a", "b", "x", "y", "lb", "rb", "back", "start",
-           "xbox", "l3", "r3")
+           "xbox", "l3", "r3", "share")
 
 
 def new_state(name: str = "", path: str = "") -> dict:
@@ -15,10 +15,24 @@ def new_state(name: str = "", path: str = "") -> dict:
         "lx": 0.0, "ly": 0.0, "rx": 0.0, "ry": 0.0,
         "lt": 0.0, "rt": 0.0,
         "hat": (0, 0),
+        # botões que o xone/xpadneo expuserem e não estejam no mapa fixo
+        "extra": {},
         "name": name, "path": path,
         "connected": False,
     })
     return st
+
+
+def code_name(code: int) -> str:
+    """Nome legível de um código EV_KEY (para log e botões extras)."""
+    try:
+        from evdev import ecodes
+        val = ecodes.bytype.get(ecodes.EV_KEY, {}).get(code, str(code))
+        if isinstance(val, (tuple, list)):
+            val = val[-1] if val else str(code)
+        return str(val)
+    except ImportError:
+        return str(code)
 
 
 def key_map() -> dict[int, str]:
@@ -27,7 +41,7 @@ def key_map() -> dict[int, str]:
         from evdev import ecodes
     except ImportError:
         return {}
-    return {
+    out = {
         ecodes.BTN_SOUTH: "a",
         ecodes.BTN_EAST: "b",
         ecodes.BTN_NORTH: "x",
@@ -40,6 +54,13 @@ def key_map() -> dict[int, str]:
         ecodes.BTN_THUMBL: "l3",
         ecodes.BTN_THUMBR: "r3",
     }
+    # O Share varia entre xpadneo/xone/terceiros; aceita os códigos usuais
+    # sem quebrar o mapa fixo caso o driver não os exponha.
+    for attr in ("BTN_C", "KEY_RECORD", "BTN_TRIGGER_HAPPY1"):
+        code = getattr(ecodes, attr, None)
+        if code is not None:
+            out.setdefault(code, "share")
+    return out
 
 
 def _norm_stick(value: int, lo: int, hi: int, deadzone: float = 0.0) -> float:
@@ -65,6 +86,14 @@ def _norm_trigger(value: int, lo: int, hi: int) -> float:
 def apply_key(state: dict, code: int, pressed: bool) -> bool:
     name = key_map().get(code)
     if not name:
+        # Guarda botões desconhecidos para o testador mostrar (Share,
+        # paddles do Elite, botões de volantes etc.) sem inventar mapa.
+        extra = state.setdefault("extra", {})
+        label = code_name(code)
+        if pressed:
+            extra[label] = True
+        else:
+            extra.pop(label, None)
         return False
     state[name] = bool(pressed)
     return True
@@ -110,10 +139,13 @@ def apply_abs(state: dict, code: int, value: int,
 
 
 def pressed_names(state: dict) -> list[str]:
-    return [b for b in BUTTONS if state.get(b)]
+    names = [b for b in BUTTONS if state.get(b)]
+    names.extend(k for k, v in (state.get("extra") or {}).items() if v)
+    return names
 
 
-def resync(state: dict, dev, limits: dict[int, tuple[int, int]]) -> bool:
+def resync(state: dict, dev, limits: dict[int, tuple[int, int]],
+           deadzone: float = 0.0) -> bool:
     """Ressincroniza após SYN_DROPPED (buffer evdev transbordou).
 
     Rele `active_keys()` + `absinfo()` e corrige botões "grudados"
@@ -124,11 +156,16 @@ def resync(state: dict, dev, limits: dict[int, tuple[int, int]]) -> bool:
     except (AttributeError, OSError, IOError):
         return False
     changed = False
-    for code, name in key_map().items():
+    known = key_map()
+    for code, name in known.items():
         want = code in pressed
         if state.get(name) is not want:
             state[name] = want
             changed = True
+    extras = {code_name(c): True for c in pressed if c not in known}
+    if extras != (state.get("extra") or {}):
+        state["extra"] = extras
+        changed = True
     for code in limits:
         try:
             val = dev.absinfo(code).value
@@ -137,7 +174,7 @@ def resync(state: dict, dev, limits: dict[int, tuple[int, int]]) -> bool:
         before = (state.get("hat"), state.get("lx"), state.get("ly"),
                   state.get("rx"), state.get("ry"),
                   state.get("lt"), state.get("rt"))
-        apply_abs(state, code, val, limits)
+        apply_abs(state, code, val, limits, deadzone)
         after = (state.get("hat"), state.get("lx"), state.get("ly"),
                  state.get("rx"), state.get("ry"),
                  state.get("lt"), state.get("rt"))

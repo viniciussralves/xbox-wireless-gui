@@ -236,7 +236,9 @@ class TestXoneFull(unittest.TestCase):
             self.assertFalse(xone.set_pairing(True)[0])
 
     def test_run_pkexec_shell(self):
-        with mock.patch("backend.xone.subprocess.run",
+        with mock.patch("backend.xone._pkexec",
+                        return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xone.subprocess.run",
                         return_value=mock.Mock(returncode=0)) as r:
             xone._run_pkexec_shell("echo 1")
             self.assertTrue(r.call_args[0][0][0].endswith("pkexec"))
@@ -410,10 +412,12 @@ class TestXowFull(unittest.TestCase):
         with mock.patch("backend.xow.subprocess.run",
                         side_effect=OSError("x")):
             self.assertFalse(xow.service_active())
-        with mock.patch("backend.xow.subprocess.run",
+        with mock.patch("backend.xow._pkexec", return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xow.subprocess.run",
                         return_value=mock.Mock(returncode=0)):
             self.assertTrue(xow.set_pairing()[0])
-        with mock.patch("backend.xow.subprocess.run",
+        with mock.patch("backend.xow._pkexec", return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xow.subprocess.run",
                         side_effect=sp.TimeoutExpired("x", 1)):
             self.assertFalse(xow.set_pairing()[0])
         self.assertIn("xow", xow.firmware_hint())

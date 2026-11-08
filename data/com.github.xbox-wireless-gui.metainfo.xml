@@ -4,7 +4,7 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Xbox Wireless GUI</name>
-  <summary>Gerencie o Xbox Wireless Adapter e controles no Linux</summary>
+  <summary>Gerencie o Xbox Wireless Adapter, controles, LED e áudio no Linux</summary>
   <description>
     <p>
       Interface GTK4 + Libadwaita para o Xbox Wireless Adapter no Linux,
@@ -12,11 +12,24 @@
     </p>
     <p>
       Ativa/desativa o pairing, lista controles com bateria via UPower,
-      ajusta o LED, testa a vibração e inclui um testador de botões ao vivo.
+      ajusta o LED, desliga controles, testa os motores de vibração, gerencia
+      áudio/headset do xone e inclui um testador de botões ao vivo.
+    </p>
+    <p>
+      Traz diagnóstico copiável (kernel, driver, firmware, udev, evdev),
+      perfis de LED por serial, notificações e uma CLI para scripts.
     </p>
   </description>
   <launchable type="desktop-id">com.github.xbox-wireless-gui.desktop</launchable>
   <url type="homepage">https://github.com/viniciussralves/xbox-wireless-gui</url>
+  <url type="bugtracker">https://github.com/viniciussralves/xbox-wireless-gui/issues</url>
+  <url type="vcs-browser">https://github.com/viniciussralves/xbox-wireless-gui</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Controles, pairing, desligar e wakeup do adaptador</caption>
+      <image>https://raw.githubusercontent.com/viniciussralves/xbox-wireless-gui/main/data/screenshots/main-window.png</image>
+    </screenshot>
+  </screenshots>
   <developer id="com.github.viniciussralves">
     <name>theone</name>
   </developer>
@@ -51,6 +64,11 @@
     <display_length compare="ge">360</display_length>
   </requires>
   <releases>
+    <release version="0.2.0" date="2026-11-07">
+      <description>
+        <p>Desligar controles (poweroff), bateria por nível/serial, diagnóstico copiável, notificações, pairing com auto-off, áudio/headset xone, perfis de LED, Bluetooth, CLI e preferências novas.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-18"/>
   </releases>
 </component>

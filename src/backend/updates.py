@@ -61,6 +61,8 @@ def latest_release(timeout: int = 8) -> dict:
     with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
         data = json.loads(resp.read().decode("utf-8", "replace"))
     return {"tag": data.get("tag_name", "") or "",
+            "name": data.get("name", "") or "",
+            "body": data.get("body", "") or "",
             "url": data.get("html_url") or f"https://github.com/{REPO}/releases"}
 
 
@@ -70,7 +72,9 @@ def check(current: str, timeout: int = 8) -> dict:
         rel = latest_release(timeout=timeout)
         tag = rel.get("tag", "")
         if tag and is_newer(tag, current):
-            return {"newer": True, "tag": tag, "url": rel.get("url", "")}
-        return {"newer": False, "tag": tag, "url": rel.get("url", "")}
+            return {"newer": True, "tag": tag, "url": rel.get("url", ""),
+                    "name": rel.get("name", ""), "body": rel.get("body", "")}
+        return {"newer": False, "tag": tag, "url": rel.get("url", ""),
+                "name": rel.get("name", ""), "body": rel.get("body", "")}
     except Exception as e:  # noqa: BLE001 (offline etc.: silencioso na UI)
         return {"newer": False, "tag": "", "url": "", "error": str(e)}

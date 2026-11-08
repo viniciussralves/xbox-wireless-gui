@@ -1,5 +1,5 @@
 Name:           xbox-wireless-gui
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Interface GTK para Xbox Wireless Adapter (xone/xow)
 License:        GPL-3.0-or-later
@@ -21,7 +21,8 @@ BuildRequires:  systemd-udev
 Requires:       python3-gobject gtk4 libadwaita upower polkit python3-evdev
 Requires:       shadow-utils systemd-udev
 Recommends:     evtest joystick
-Recommends:     bluez
+Recommends:     bluez pulseaudio-utils
+Recommends:     pipewire-utils
 # driver via akmods/dkms/lpf ou COPR, não obrigatório: xone ou xow
 
 %description
@@ -41,6 +42,7 @@ done
 %install
 mkdir -p %{buildroot}%{_bindir} %{buildroot}%{_datadir}/applications
 mkdir -p %{buildroot}%{_datadir}/xbox-wireless-gui/backend
+mkdir -p %{buildroot}%{_datadir}/xbox-wireless-gui/screenshots
 mkdir -p %{buildroot}%{_libexecdir}
 mkdir -p %{buildroot}%{_datadir}/polkit-1/actions
 mkdir -p %{buildroot}%{_datadir}/glib-2.0/schemas
@@ -61,6 +63,7 @@ EOF
 chmod 755 %{buildroot}%{_bindir}/xbox-wireless-gui
 install -m644 src/main.py %{buildroot}%{_datadir}/xbox-wireless-gui/main.py
 install -m644 src/backend/*.py %{buildroot}%{_datadir}/xbox-wireless-gui/backend/
+install -m644 data/screenshots/*.png %{buildroot}%{_datadir}/xbox-wireless-gui/screenshots/
 install -m755 data/xbox-wireless-gui-helper %{buildroot}%{_libexecdir}/xbox-wireless-gui-helper
 install -m644 data/71-xbox-wireless-gui.rules %{buildroot}%{_datadir}/xbox-wireless-gui/
 install -m644 data/com.github.xbox-wireless-gui.desktop %{buildroot}%{_datadir}/applications/
@@ -97,11 +100,12 @@ udevadm control --reload-rules &>/dev/null || :
 
 %files
 %license LICENSE
-%doc README.md
+%doc README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
 %{_bindir}/xbox-wireless-gui
 %{_libexecdir}/xbox-wireless-gui-helper
 %{_datadir}/xbox-wireless-gui/main.py
 %{_datadir}/xbox-wireless-gui/backend/*.py
+%{_datadir}/xbox-wireless-gui/screenshots/*.png
 %{_datadir}/xbox-wireless-gui/71-xbox-wireless-gui.rules
 %{_datadir}/applications/com.github.xbox-wireless-gui.desktop
 %{_datadir}/polkit-1/actions/com.github.xbox-wireless-gui.policy
@@ -114,6 +118,10 @@ udevadm control --reload-rules &>/dev/null || :
 %{_datadir}/locale/*/LC_MESSAGES/xbox-wireless-gui.mo
 
 %changelog
+* Sat Nov 07 2026 theone <viniciussralves92@gmail.com> - 0.2.0-1
+- Poweroff de controles, bateria por nível/serial, diagnóstico copiável,
+  notificações, pairing auto-off, áudio/headset xone, perfis de LED,
+  Bluetooth, CLI, novas preferências e testes
 * Sun Oct 18 2026 theone <viniciussralves92@gmail.com> - 0.1.0-1
 - Firmware com status/instalação, permissões udev, multi-dongle, countdown xow,
   rumble configurável, GSettings, i18n (pt/en), testes, AppData/ícone/man, COPR

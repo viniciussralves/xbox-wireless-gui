@@ -69,6 +69,50 @@ def _level_pt(level_en: str) -> str:
     return m.get((level_en or "").strip().lower(), level_en or "?")
 
 
+def level_pct(level_en: str) -> int:
+    """Percentual aproximado para exibir quando o UPower não é confiável."""
+    return {
+        "full": 100,
+        "high": 80,
+        "normal": 60,
+        "low": 30,
+        "critical": 10,
+        "none": 0,
+    }.get((level_en or "").strip().lower(), -1)
+
+
+def is_reliable(b: dict) -> bool:
+    """Só mostra % exato quando o UPower diz que é uma fonte de energia."""
+    try:
+        return bool(b.get("power_supply")) and int(b.get("percentage", -1)) >= 0
+    except (TypeError, ValueError):
+        return False
+
+
+def display_pct(b: dict) -> int:
+    """Percentual exato (confiável) ou estimativa pelo nível; -1 = sem dado."""
+    try:
+        pct = int(b.get("percentage", -1))
+    except (TypeError, ValueError):
+        pct = -1
+    if is_reliable(b):
+        return pct
+    est = level_pct(b.get("level_en") or "")
+    return est
+
+
+def is_low(b: dict) -> bool:
+    level = (b.get("level_en") or "").strip().lower()
+    if level in ("low", "critical"):
+        return True
+    if is_reliable(b):
+        try:
+            return int(b.get("percentage", 100)) <= 20
+        except (TypeError, ValueError):
+            return False
+    return False
+
+
 def icon_for(pct: int, state_en: str, level_en: str) -> str:
     """Ícone calculado localmente: não confia no icon_name do UPower,
     que reporta battery-low a 55%% em alguns gamepads xone."""
@@ -115,6 +159,8 @@ def list_batteries() -> list[dict]:
                 is_gamepad = (
                     "gaming" in kind.lower()
                     or "gip" in native.lower()
+                    or "headset" in kind.lower()
+                    or "headset" in text.lower()
                     or any(k in text.lower() for k in ("xbox", "gamepad", "controller"))
                 )
                 if not is_gamepad:
@@ -126,18 +172,25 @@ def list_batteries() -> list[dict]:
                     level = UPowerGlib.Device.level_to_string(p.battery_level)
                 except Exception:  # noqa: BLE001
                     level = str(p.battery_level)
+                pct = round(float(p.percentage))
+                state_en = _state_str(p.state)
                 out.append({
                     "device": text or native or _("controle"),
-                    "percentage": round(float(p.percentage)),
-                    "state": translate_state(_state_str(p.state)),
-                    "state_en": _state_str(p.state),
+                    "percentage": pct,
+                    "state": translate_state(state_en),
+                    "state_en": state_en,
                     "kind": kind,
                     "level": _level_pt(level),
                     "level_en": level,
                     "native_path": native,
                     "serial": (p.serial or "").strip(),
-                    "icon": icon_for(round(float(p.percentage)),
-                                     _state_str(p.state), level),
+                    "model": model,
+                    "vendor": vendor,
+                    "power_supply": bool(getattr(p, "power_supply", False)),
+                    "battery_level": int(p.battery_level),
+                    "capacity": float(getattr(p, "capacity", 0.0) or 0.0),
+                    "is_reliable": bool(getattr(p, "power_supply", False)) and pct >= 0,
+                    "icon": icon_for(pct, state_en, level),
                     "time_empty": int(p.time_to_empty or 0),
                     "time_full": int(p.time_to_full or 0),
                 })
