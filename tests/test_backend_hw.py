@@ -236,7 +236,9 @@ class TestXoneFull(unittest.TestCase):
             self.assertFalse(xone.set_pairing(True)[0])
 
     def test_run_pkexec_shell(self):
-        with mock.patch("backend.xone.subprocess.run",
+        with mock.patch("backend.xone._pkexec",
+                        return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xone.subprocess.run",
                         return_value=mock.Mock(returncode=0)) as r:
             xone._run_pkexec_shell("echo 1")
             self.assertTrue(r.call_args[0][0][0].endswith("pkexec"))
