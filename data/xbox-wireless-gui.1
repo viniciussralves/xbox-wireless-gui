@@ -1,4 +1,4 @@
-.TH XBOX-WIRELESS-GUI 1 "November 2026" "0.2.0" "User Commands"
+.TH XBOX-WIRELESS-GUI 1 "November 2026" "0.3.0" "User Commands"
 .SH NAME
 xbox-wireless-gui \- manage the Xbox Wireless Adapter and controllers on Linux
 .SH SYNOPSIS
@@ -15,7 +15,9 @@ with automatic detection of the
 It enables/disables pairing, lists controllers with UPower battery status,
 adjusts the guide-button LED, powers controllers off, tests each rumble
 motor, manages xone audio/headsets, pairs Bluetooth controllers and includes
-a live button tester plus a copyable diagnostic report.
+a live button tester plus a copyable diagnostic report. The app also exposes
+a session D-Bus API, a background notification service, battery history,
+event-driven refresh and input-remapper integration.
 .SH OPTIONS
 .TP
 .B \-\-version
@@ -24,6 +26,12 @@ Print the application version.
 .B \-\-status [\-\-json]
 Print driver, dongle, pairing, controllers and battery status without opening
 the GUI.
+.TP
+.B \-\-background
+Run the background notification/LED-profile service without a window.
+.TP
+.B \-\-verbose
+Enable verbose logging to stderr and the state log file.
 .TP
 .B \-\-diagnose
 Print a Markdown diagnostic report (kernel, driver, firmware, udev, evdev,
@@ -40,7 +48,16 @@ Set the guide-button LED (xone).
 .PP
 Standard GTK/GApplication options, e.g.
 .BR \-h ", " \-\-help .
+.SH D-BUS
+Session interface
+.B com.github.xboxwirelessgui.Control1
+at
+.I /com/github/xboxwirelessgui/Control
+provides GetStatus, Refresh, Present, SetPairing, SetLed and Poweroff.
 .SH FILES
+.TP
+.I ~/.local/state/xbox-wireless-gui/app.log
+rotating application log.
 .TP
 .I ~/.config/xbox-wireless-gui/profiles.json
 per-controller names and saved LED profiles.

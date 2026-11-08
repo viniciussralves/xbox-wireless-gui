@@ -1,0 +1,13 @@
+[Unit]
+Description=Xbox Wireless GUI privileged helper (polkit)
+After=dbus.service
+Requires=dbus.service
+
+[Service]
+Type=dbus
+BusName=com.github.xbox-wireless-gui.Helper
+ExecStart=/usr/bin/python3 /usr/share/xbox-wireless-gui/privhelper.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,31 @@
 Todas as mudanças relevantes deste projeto seguem um formato simples,
 inspirado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.3.0] — 2026-11-07
+
+### Adicionado
+- Atualização orientada a eventos com `Gio.FileMonitor` e sinais do UPower,
+  mantendo o polling como fallback.
+- Helper D-Bus root com autorização polkit dedicada (`com.github.xbox-wireless-gui.helper`)
+  e fallback para o helper/pkexec antigo.
+- API D-Bus de sessão `com.github.xboxwirelessgui.Control1` com
+  `GetStatus`, `Refresh`, `Present`, `SetPairing`, `SetLed` e `Poweroff`.
+- Histórico de bateria via `UPower.GetHistory`, com janela e gráfico.
+- Logging rotativo em `~/.local/state/xbox-wireless-gui/app.log`, opção
+  `--verbose` e log recente no diagnóstico.
+- Acessibilidade: rótulos em botões de ícone, descrição acessível do
+  testador e atalhos Ctrl+R/Ctrl+D/Ctrl+Q/F1.
+- Serviço de usuário em segundo plano (`--background`) para notificações
+  e reaplicação de perfis de LED.
+- Integração com input-remapper na interface.
+- Empacotamento Debian e AUR; unidades systemd, política D-Bus e
+  serviço de ativação por D-Bus.
+- Testes para os novos módulos e fluxos (246 testes).
+
+### Corrigido
+- Caminhos/interface D-Bus válidos (sem hífen em object path/interface).
+- Convenção de nome de interface e registro de objeto D-Bus.
+
 ## [0.2.0] — 2026-11-07
 
 ### Adicionado

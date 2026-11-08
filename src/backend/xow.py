@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 
+from backend import privclient
 from backend.i18n import _
 
 
@@ -55,6 +56,9 @@ def service_control(action: str) -> tuple[bool, str]:
     """start/stop/restart do xow via helper/pkexec (precisa root)."""
     if action not in ("start", "stop", "restart", "enable", "disable"):
         return False, _("ação inválida")
+    res = privclient.xow_action(action)
+    if res is not None:
+        return res
     helper = "/usr/libexec/xbox-wireless-gui-helper"
     if os.path.isfile(helper) and os.access(helper, os.X_OK):
         try:

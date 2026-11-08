@@ -289,6 +289,184 @@ class MainNewCase(unittest.TestCase):
         card.set_battery_info({"percentage": -1, "state": "x"})
         card.set_battery(50, "y")
 
+    def test_history_window(self):
+        w = self._win()
+        rows = [{"time": 1, "value": 50.0, "state": 2},
+                {"time": 2, "value": 40.0, "state": 2}]
+        with mock.patch.object(main.history, "get_history", return_value=rows):
+            hist = main.BatteryHistoryWindow(w, "gip0.0", "Pad")
+            hist._on_copy(None)
+            import cairo
+            surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 560, 240)
+            hist._draw(hist.area, cairo.Context(surf), 560, 240, None)
+        with mock.patch.object(main.history, "get_history", return_value=[]):
+            hist2 = main.BatteryHistoryWindow(w, "x", "Pad")
+            import cairo
+            surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 560, 240)
+            hist2._draw(hist2.area, cairo.Context(surf), 560, 240, None)
+        w.show_battery_history("gip0.0", "Pad")
+
+    def test_events_remap_banner(self):
+        w = self._win()
+        self.assertIsNotNone(w._fs_monitor)
+        w._queue_event_refresh()
+        self.assertIsNotNone(w._event_refresh_id)
+        w._event_refresh()
+        with mock.patch.object(w, "get_visible", return_value=True), \
+             mock.patch.object(w, "on_refresh") as r:
+            w._event_refresh()
+            r.assert_called()
+        with mock.patch.object(main.remap, "open_tool",
+                               return_value=(False, "x")), \
+             mock.patch.object(w, "copy_text") as c:
+            w._on_remap(None)
+            c.assert_called()
+        with mock.patch.object(main.remap, "open_tool",
+                               return_value=(True, "ok")):
+            w._on_remap(None)
+        w._banner_mode = "no-driver"
+        with mock.patch.object(w, "copy_text") as c:
+            w._on_banner_button()
+            c.assert_called()
+        w._banner_mode = "xow-stopped"
+        with mock.patch.object(w, "_xow_action") as a:
+            w._on_banner_button()
+            a.assert_called_with("start")
+        w._upd_body = "notes"
+        with mock.patch.object(w, "_show_text_window") as st:
+            w._on_update_notes(None)
+            st.assert_called_once()
+
+    def test_api_registration(self):
+        app = main.App()
+        app._main_window = mock.Mock()
+        app._main_window._selected_dongle.return_value = "/d"
+        conn = mock.Mock()
+        with mock.patch.object(app, "get_dbus_connection",
+                               return_value=conn), \
+             mock.patch.object(main.api, "register",
+                               return_value="api") as reg, \
+             mock.patch.object(main, "xone") as x:
+            app._register_api()
+            self.assertEqual(app._api, "api")
+            callbacks = reg.call_args[0][1]
+            callbacks["refresh"]()
+            callbacks["pairing"](True)
+            callbacks["led"]("g", "1", "2")
+            callbacks["poweroff"](1)
+            callbacks["status"]()
+            app._register_api()
+            x.set_pairing.assert_called()
+            x.set_led.assert_called()
+            x.poweroff.assert_called()
+        app2 = main.App()
+        app2._main_window = None
+        with mock.patch.object(app2, "get_dbus_connection",
+                               return_value=mock.Mock()), \
+             mock.patch.object(main.api, "register",
+                               return_value="api") as reg2:
+            app2._register_api()
+            callbacks = reg2.call_args[0][1]
+            callbacks["pairing"](True)
+        app3 = main.App()
+        with mock.patch.object(app3, "get_dbus_connection",
+                               return_value=mock.Mock()), \
+             mock.patch.object(main.api, "register",
+                               side_effect=RuntimeError("x")):
+            app3._register_api()
+            self.assertIsNone(app3._api)
+        app4 = main.App()
+        win = mock.Mock()
+        app4._main_window = win
+        with mock.patch.object(app4, "_register_api"):
+            app4.do_activate()
+        win.present.assert_called_once()
+
+    def test_more_edges(self):
+        w = self._win()
+        with mock.patch.object(main.Gdk.ContentProvider, "new_for_bytes",
+                               side_effect=RuntimeError("x")):
+            with mock.patch.object(main.history, "get_history",
+                                   return_value=[{"time": 1, "value": 1,
+                                                  "state": 1}]):
+                h = main.BatteryHistoryWindow(w, "x", "d")
+                h._on_copy(None)
+                class BadArea:
+                    def get_style_context(self):
+                        raise RuntimeError("x")
+                import cairo
+                surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 100, 100)
+                h._draw(BadArea(), cairo.Context(surf), 100, 100, None)
+        w._fs_monitor = mock.Mock()
+        w._fs_monitor.stop.side_effect = RuntimeError("x")
+        w._up_monitor = mock.Mock()
+        w._up_monitor.stop.side_effect = RuntimeError("x")
+        with mock.patch("backend.monitor.GLib.source_remove",
+                        side_effect=RuntimeError("x")):
+            w._on_window_close()
+        with mock.patch.object(main.remap, "open_tool",
+                               return_value=(True, "ok")):
+            w._on_remap(None)
+        self.m["xow"].service_active.side_effect = RuntimeError("x")
+        w._refresh_xow_row(DriverInfo(name="xone"))
+        self.m["xow"].service_active.side_effect = None
+        self.m["bt"].xbox_devices.side_effect = RuntimeError("x")
+        w._on_bt_scan(None)
+        pump()
+        self.m["bt"].xbox_devices.side_effect = None
+        bad = mock.Mock(get_value=mock.Mock(side_effect=RuntimeError("x")))
+        w._on_rumble_weak(bad)
+        w._upd_body = ""
+        with mock.patch.object(w, "_show_text_window") as st:
+            w._on_update_notes(None)
+            st.assert_called_once()
+        self.m["xone"].active_clients.side_effect = RuntimeError("x")
+        w.on_refresh()
+        self.m["xone"].active_clients.side_effect = None
+        self.m["xone"].active_clients.return_value = {"count": 0, "slots": []}
+        with mock.patch.object(w._prefs, "get_int",
+                               side_effect=RuntimeError("x")):
+            w._start_pair_auto_off()
+        with mock.patch.object(w, "_notify") as n:
+            w._check_low_battery([{"device": "d", "power_supply": True,
+                                   "percentage": "x"}])
+            n.assert_not_called()
+        with mock.patch.object(main.xone, "poweroff",
+                               side_effect=RuntimeError("x")):
+            w._run_pair(lambda: (True, "ok"))
+            pump()
+        w.vibrate_path("/dev/x", motor="strong")
+        w.vibrate_path("/dev/x", motor="weak")
+        pump()
+
+    def test_rename_dialog(self):
+        w = self._win()
+        calls = {}
+
+        class FakeDialog:
+            def __init__(self, **kw):
+                calls["kw"] = kw
+
+            def add_response(self, *a):
+                pass
+
+            def set_response_appearance(self, *a):
+                pass
+
+            def set_extra_child(self, child):
+                calls["child"] = child
+
+            def connect(self, sig, cb):
+                calls["cb"] = cb
+
+            def present(self, *a):
+                pass
+
+        with mock.patch.object(main.Adw, "AlertDialog", FakeDialog):
+            w.rename_controller("S", "Controle")
+            calls["cb"](None, "ok")
+        self.m["profiles"].set_name.assert_called()
+
     def test_tester_copy(self):
         class Fake:
             _state = main.inputs.new_state()
@@ -434,6 +612,8 @@ class TestCli(unittest.TestCase):
             self.assertEqual(main._cli(["--version"]), 0)
             self.assertEqual(main._cli(["--help"]), 0)
             self.assertIsNone(main._cli([]))
+            with mock.patch("backend.background.main", return_value=7):
+                self.assertEqual(main._cli(["--background"]), 7)
             self.m["det"].detect.return_value = DriverInfo(name="xow")
             self.m["xow"].available.return_value = True
             self.m["xow"].set_pairing.return_value = (True, "ok")
@@ -442,6 +622,10 @@ class TestCli(unittest.TestCase):
             self.m["det"].detect.return_value = DriverInfo(name="nenhum")
             self.m["xow"].available.return_value = False
             self.assertEqual(main._cli(["--pair", "on"]), 1)
+            self.m["xone"].poweroff.return_value = (False, "no")
+            self.assertEqual(main._cli(["--poweroff"]), 1)
+            self.m["xone"].set_led.return_value = (False, "no")
+            self.assertEqual(main._cli(["--led", "g", "1", "2"]), 1)
         self.assertIn("driver:", out.getvalue())
         self.assertIn("diag", out.getvalue())
 

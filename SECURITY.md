@@ -17,6 +17,14 @@ O helper valida caminhos, IDs, modos e índices antes de escrever em sysfs.
 O fallback de desenvolvimento usa um script constante com valores cotados;
 nunca executa arquivos do checkout do usuário.
 
+## Helper D-Bus e polkit
+
+O serviço opcional `com.github.xbox-wireless-gui.Helper` roda como root via
+systemd (`Type=dbus`) e usa a ação polkit
+`com.github.xbox-wireless-gui.helper` antes de cada chamada. Ele delega ao
+mesmo helper shell auditado, com validação de caminhos/IDs. O cliente cai
+no fluxo `pkexec` se o serviço não estiver instalado/disponível.
+
 ## Regra udev
 
 A regra `71-xbox-wireless-gui.rules` dá ao grupo `xboxwireless` acesso de

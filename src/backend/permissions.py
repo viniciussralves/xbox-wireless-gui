@@ -15,6 +15,7 @@ import re
 import shlex
 import subprocess
 
+from backend import privclient
 from backend.i18n import _
 
 RULE_NAME = "71-xbox-wireless-gui.rules"
@@ -240,6 +241,9 @@ def install_fix() -> tuple[bool, str]:
     user = _login_user()
     if not user or not _USER_RE.match(user):
         return False, _("usuário inválido para o grupo")
+    res = privclient.fix_permissions(user)
+    if res is not None:
+        return _finish_fix() if res[0] else res
     pkexec = _pkexec()
     if not pkexec:
         return False, _("pkexec não encontrado")
