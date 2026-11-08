@@ -410,10 +410,12 @@ class TestXowFull(unittest.TestCase):
         with mock.patch("backend.xow.subprocess.run",
                         side_effect=OSError("x")):
             self.assertFalse(xow.service_active())
-        with mock.patch("backend.xow.subprocess.run",
+        with mock.patch("backend.xow._pkexec", return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xow.subprocess.run",
                         return_value=mock.Mock(returncode=0)):
             self.assertTrue(xow.set_pairing()[0])
-        with mock.patch("backend.xow.subprocess.run",
+        with mock.patch("backend.xow._pkexec", return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xow.subprocess.run",
                         side_effect=sp.TimeoutExpired("x", 1)):
             self.assertFalse(xow.set_pairing()[0])
         self.assertIn("xow", xow.firmware_hint())

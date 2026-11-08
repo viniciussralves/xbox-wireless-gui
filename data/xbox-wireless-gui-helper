@@ -43,7 +43,9 @@ case "${1:-}" in
         esac
         base="/sys/class/leds/$id"
         [ -d "$base" ] || die "LED não existe"
-        [ -f "$base/mode" ] && [ -f "$base/brightness" ] || die "LED incompleto"
+        if [ ! -f "$base/mode" ] || [ ! -f "$base/brightness" ]; then
+            die "LED incompleto"
+        fi
         max=$(cat "$base/max_brightness" 2>/dev/null || echo 255)
         [ "$brightness" -le "$max" ] || die "brilho fora da faixa"
         printf '%s\n' "$mode" > "$base/mode"

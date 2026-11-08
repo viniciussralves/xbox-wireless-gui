@@ -194,8 +194,9 @@ def detect() -> DriverInfo:
         pf = xone_pairing_file(dongle)
         all_dongles = sorted(glob.glob("/sys/bus/usb/drivers/xone-dongle/*:*"))
         detail = f"dongle={dongle} pairing_file={pf}"
+        detail += " módulo=xone_dongle"
         if xone_version:
-            detail += f" módulo=xone_dongle {xone_version}"
+            detail += f" {xone_version}"
         if usb:
             detail += f" usb={usb[0]['id']}"
         return DriverInfo(name="xone", dongle_sysfs=dongle, detail=detail,

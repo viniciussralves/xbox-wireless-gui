@@ -290,7 +290,8 @@ class TestGapXone(unittest.TestCase):
 
 class TestGapXow(unittest.TestCase):
     def test_set_pairing_fail_msg(self):
-        with mock.patch("backend.xow.subprocess.run",
+        with mock.patch("backend.xow._pkexec", return_value="/usr/bin/pkexec"), \
+             mock.patch("backend.xow.subprocess.run",
                         return_value=mock.Mock(returncode=1, stderr="",
                                               stdout="denied")):
             ok, msg = xow.set_pairing()
