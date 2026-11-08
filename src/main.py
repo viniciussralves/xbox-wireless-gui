@@ -36,6 +36,57 @@ levelbar.crit block.filled { background: @error_bg_color; }
 .dim { font-size: 10pt; opacity: .75; }
 .btn-std { min-width: 140px; min-height: 34px; border-radius: 9px; }
 .btn-icon { min-width: 34px; min-height: 34px; border-radius: 9px; }
+
+/* --- identidade visual / dashboard --- */
+.hero {
+    background-image: linear-gradient(135deg, alpha(@accent_bg_color, 0.20),
+                                      alpha(@accent_bg_color, 0.03));
+    border: 1px solid alpha(@accent_bg_color, 0.28);
+    border-radius: 20px;
+    padding: 22px;
+}
+.hero-icon {
+    background: alpha(@accent_bg_color, 0.18);
+    border-radius: 16px;
+    padding: 12px;
+}
+.hero-title { font-size: 22pt; font-weight: 800; }
+.hero-subtitle { font-size: 10.5pt; opacity: .78; }
+.status-pill {
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 9pt;
+    font-weight: 700;
+}
+.status-pill.neutral { background: alpha(@card_bg_color, 0.85); }
+.status-pill.ok { background: alpha(@success_bg_color, 0.20); color: @success_color; }
+.status-pill.warn { background: alpha(@warning_bg_color, 0.22); color: @warning_color; }
+.status-pill.err { background: alpha(@error_bg_color, 0.20); color: @error_color; }
+.stat-card {
+    background: alpha(@card_bg_color, 0.80);
+    border: 1px solid alpha(@borders, 0.55);
+    border-radius: 12px;
+    padding: 10px 14px;
+    min-width: 120px;
+}
+.stat-value { font-size: 16pt; font-weight: 800; }
+.stat-label { font-size: 9pt; opacity: .70; }
+.empty-card {
+    background: alpha(@card_bg_color, 0.55);
+    border: 1px dashed alpha(@borders, 0.85);
+    border-radius: 18px;
+    padding: 18px;
+}
+.battery-chip {
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 9pt;
+    font-weight: 700;
+    background: alpha(@success_bg_color, 0.16);
+}
+.battery-chip.low { background: alpha(@warning_bg_color, 0.20); color: @warning_color; }
+.battery-chip.crit { background: alpha(@error_bg_color, 0.20); color: @error_color; }
+.quick-action { border-radius: 999px; padding: 8px 16px; font-weight: 700; }
 """
 
 # Escala única de fontes da interface: cada papel, um tamanho.
@@ -181,6 +232,10 @@ class ControllerCard(Adw.ExpanderRow):
         self.connection = connection or connection_kind(pad_path, led_id)
         self.power_index = power_index(led_id)
         self.add_prefix(Gtk.Image.new_from_icon_name("input-gaming-symbolic"))
+        self.bat_chip = Gtk.Label(label="—")
+        self.bat_chip.add_css_class("battery-chip")
+        self.bat_chip.set_valign(Gtk.Align.CENTER)
+        self.add_suffix(self.bat_chip)
         self.set_expanded(False)
 
         # --- informações / identificação ---
@@ -339,15 +394,22 @@ class ControllerCard(Adw.ExpanderRow):
         pct = battery_pct(b)
         if pct < 0:
             self.bat_label.set_markup('<b>—</b>')
+            self.bat_chip.set_text("—")
             self.bat_row.set_subtitle(_("sem dados"))
             return
         reliable = battery_is_reliable(b)
         style_bat_bar(self.bat_bar, pct)
+        level_txt = battery_level_text(b)
+        self.bat_chip.remove_css_class("low")
+        self.bat_chip.remove_css_class("crit")
+        if pct <= 20 or (b.get("level_en") or "").lower() in ("low", "critical"):
+            self.bat_chip.add_css_class("crit" if pct <= 10 else "low")
         if reliable:
             self.bat_label.set_markup(f'<b>{pct}%</b>')
+            self.bat_chip.set_text(f"{pct}%")
         else:
-            lvl = battery_level_text(b)
-            self.bat_label.set_markup(f'<b>{lvl or f"≈{pct}%"}</b>')
+            self.bat_label.set_markup(f'<b>{level_txt or f"≈{pct}%"}</b>')
+            self.bat_chip.set_text(level_txt or f"≈{pct}%")
         icon = b.get("icon") or "battery-good-symbolic"
         self.bat_icon.set_from_icon_name(icon)
         self.bat_icon.set_pixel_size(28)
@@ -1095,7 +1157,7 @@ class BatteryHistoryWindow(Adw.Window):
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
         super().__init__(application=app, title="Xbox Wireless GUI")
-        self.set_default_size(680, 600)
+        self.set_default_size(760, 720)
         self._prefs = prefs.get_prefs()
         self._dongles: list[str] = []
         self._pair_since: float | None = None
@@ -1114,6 +1176,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._fs_monitor = None
         self._up_monitor = None
         self._event_refresh_id: int | None = None
+        self._fw_state = ""
 
         css = Gtk.CssProvider()
         css.load_from_data(CSS)
@@ -1123,6 +1186,8 @@ class MainWindow(Adw.ApplicationWindow):
 
         # ---- header ----
         header = Adw.HeaderBar()
+        header.set_title_widget(Adw.WindowTitle(
+            title="Xbox Wireless", subtitle=_("Central de controle")))
         menu = Gtk.MenuButton(icon_name="open-menu-symbolic")
         a11y_label(menu, _("Menu"))
         pop = Gio.Menu()
@@ -1156,8 +1221,8 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Grupo adaptador
         g_ad = Adw.PreferencesGroup(
-            title=_("Adaptador Wireless"),
-            description=_("Dongle Microsoft 045e:02e6 / 02d1 via driver xone (ou xow legado)"))
+            title=_("Conexão"),
+            description=_("Adaptador, pairing e energia em um só lugar"))
         self.driver_row = Adw.ActionRow(title=_("Detectando…"))
         self.driver_row.add_prefix(Gtk.Image.new_from_icon_name("usb-symbolic"))
         g_ad.add(self.driver_row)
@@ -1218,13 +1283,17 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Grupo controles
         self.g_ctrl = Adw.PreferencesGroup(
-            title=_("Controles"),
-            description=_("Conectados ao dongle • expanda para LED e vibração"))
+            title=_("Seus controles"),
+            description=_("Conectados ao adaptador • expanda para ajustes"))
         self.empty_status = Adw.StatusPage(
             icon_name="input-gaming-symbolic",
             title=_("Nenhum controle conectado"),
             description=_("Ative o pairing e segure o botão Xbox até piscar rápido."))
-        self.empty_btn = Gtk.Button(label=_("Ativar pairing agora"))
+        steps = Gtk.Label(label=_("1. Ative o modo pairing\n"
+                                  "2. Segure o botão Xbox até o LED piscar rápido"))
+        steps.add_css_class("dim")
+        steps.set_justify(Gtk.Justification.CENTER)
+        self.empty_btn = Gtk.Button(label=_("Conectar um controle"))
         self.empty_btn.add_css_class("suggested-action")
         self.empty_btn.add_css_class("btn-std")
         self.empty_btn.set_valign(Gtk.Align.CENTER)
@@ -1233,7 +1302,11 @@ class MainWindow(Adw.ApplicationWindow):
         # StatusPage sem child direto: embrulha botão numa box
         empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         empty_box.set_halign(Gtk.Align.CENTER)
+        empty_box.add_css_class("empty-card")
+        empty_box.set_margin_top(8)
+        empty_box.set_margin_bottom(8)
         empty_box.append(self.empty_status)
+        empty_box.append(steps)
         empty_box.append(self.empty_btn)
         self.empty_wrap = empty_box
         self.g_ctrl.add(empty_box)
@@ -1241,14 +1314,14 @@ class MainWindow(Adw.ApplicationWindow):
         page.add(self.g_ctrl)
 
         # Grupo bateria
-        self.g_bat = Adw.PreferencesGroup(title=_("Bateria"))
+        self.g_bat = Adw.PreferencesGroup(title=_("Bateria dos controles"))
         self.bat_rows: list[Adw.ActionRow] = []
         page.add(self.g_bat)
 
         # Grupo áudio/headset (xone expõe ALSA; xow geralmente não)
         self.g_audio = Adw.PreferencesGroup(
-            title=_("Áudio e headset"),
-            description=_("sinks/sources do adaptador via PipeWire/PulseAudio"))
+            title=_("Áudio"),
+            description=_("Headset e roteamento via PipeWire/PulseAudio"))
         self.audio_status_row = Adw.ActionRow(
             title=_("Áudio do Xbox"), subtitle=_("verificando…"))
         audio_refresh = Gtk.Button(label=_("Atualizar"))
@@ -1264,7 +1337,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Grupo Bluetooth (xpadneo/BlueZ)
         self.g_bt = Adw.PreferencesGroup(
             title=_("Bluetooth"),
-            description=_("controles Xbox pareados via BlueZ (xpadneo)"))
+            description=_("Controles Xbox pareados via BlueZ (xpadneo)"))
         self.bt_row = Adw.ActionRow(
             title=_("Controles Bluetooth"),
             subtitle=_("procure controles já pareados ou escaneie"))
@@ -1279,7 +1352,7 @@ class MainWindow(Adw.ApplicationWindow):
         page.add(self.g_bt)
 
         # Grupo sistema
-        g_sys = Adw.PreferencesGroup(title=_("Sistema e firmware"))
+        g_sys = Adw.PreferencesGroup(title=_("Sistema e ajustes"))
         self.fw_row = Adw.ActionRow(title=_("Firmware do dongle"))
         fw_box = Gtk.Box(spacing=8)
         fw_box.set_valign(Gtk.Align.CENTER)
@@ -1498,8 +1571,20 @@ class MainWindow(Adw.ApplicationWindow):
         g_sys.add(self.reset_row)
         page.add(g_sys)
 
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        content.set_margin_top(18)
+        content.set_margin_bottom(24)
+        content.set_margin_start(18)
+        content.set_margin_end(18)
+        content.append(self._build_hero())
+        content.append(page)
+        clamp = Adw.Clamp()
+        clamp.set_maximum_size(860)
+        clamp.set_tightening_threshold(680)
+        clamp.set_child(content)
+
         scrolled = Gtk.ScrolledWindow(vexpand=True)
-        scrolled.set_child(page)
+        scrolled.set_child(clamp)
 
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         body.append(header)
@@ -1522,6 +1607,160 @@ class MainWindow(Adw.ApplicationWindow):
         if self._prefs.get_bool("check-updates"):
             self._update_check_id = GLib.timeout_add_seconds(3, self._auto_update_check)
         self.connect("close-request", self._on_window_close)
+
+    def _quick_button(self, label: str, icon: str):
+        btn = Gtk.Button()
+        btn.add_css_class("quick-action")
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box.append(Gtk.Image.new_from_icon_name(icon))
+        text = Gtk.Label(label=label)
+        box.append(text)
+        btn.set_child(box)
+        return btn, text
+
+    def _stat_card(self, label: str):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.add_css_class("stat-card")
+        value = Gtk.Label(label="—")
+        value.add_css_class("stat-value")
+        value.set_halign(Gtk.Align.START)
+        cap = Gtk.Label(label=label)
+        cap.add_css_class("stat-label")
+        cap.set_halign(Gtk.Align.START)
+        box.append(value)
+        box.append(cap)
+        return box, value
+
+    def _build_hero(self):
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        hero.add_css_class("hero")
+
+        top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        icon_box.add_css_class("hero-icon")
+        icon = Gtk.Image.new_from_icon_name("input-gaming-symbolic")
+        icon.set_pixel_size(46)
+        icon_box.append(icon)
+        icon_box.set_valign(Gtk.Align.START)
+
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        text.set_hexpand(True)
+        title = Gtk.Label(label=_("Xbox Wireless"))
+        title.add_css_class("hero-title")
+        title.set_halign(Gtk.Align.START)
+        self.hero_subtitle = Gtk.Label(
+            label=_("Seu adaptador, seus controles, no seu ritmo."))
+        self.hero_subtitle.add_css_class("hero-subtitle")
+        self.hero_subtitle.set_halign(Gtk.Align.START)
+        self.hero_subtitle.set_wrap(True)
+        text.append(title)
+        text.append(self.hero_subtitle)
+
+        self.hero_status = Gtk.Label(label=_("Verificando…"))
+        self.hero_status.add_css_class("status-pill")
+        self.hero_status.add_css_class("neutral")
+        self.hero_status.set_valign(Gtk.Align.START)
+        top.append(icon_box)
+        top.append(text)
+        top.append(self.hero_status)
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(2)
+        self.hero_pair_btn, self.hero_pair_label = self._quick_button(
+            _("Parear controle"), "list-add-symbolic")
+        self.hero_pair_btn.add_css_class("suggested-action")
+        self.hero_pair_btn.connect("clicked", self.on_pair)
+        self.hero_test_btn, self.hero_test_label = self._quick_button(
+            _("Testar controle"), "input-gaming-symbolic")
+        self.hero_test_btn.connect("clicked", self._on_open_tester)
+        self.hero_diag_btn, self.hero_diag_label = self._quick_button(
+            _("Diagnóstico"), "dialog-information-symbolic")
+        self.hero_diag_btn.connect("clicked", self._on_diagnostics)
+        actions.append(self.hero_pair_btn)
+        actions.append(self.hero_test_btn)
+        actions.append(self.hero_diag_btn)
+
+        stats = Gtk.FlowBox()
+        stats.set_selection_mode(Gtk.SelectionMode.NONE)
+        stats.set_max_children_per_line(3)
+        stats.set_min_children_per_line(1)
+        stats.set_column_spacing(10)
+        stats.set_row_spacing(10)
+        stats.set_homogeneous(True)
+        self.hero_ctrl_card, self.hero_ctrl_value = self._stat_card(
+            _("Controles conectados"))
+        self.hero_bat_card, self.hero_bat_value = self._stat_card(
+            _("Bateria média"))
+        self.hero_fw_card, self.hero_fw_value = self._stat_card(
+            _("Firmware"))
+        stats.insert(self.hero_ctrl_card, -1)
+        stats.insert(self.hero_bat_card, -1)
+        stats.insert(self.hero_fw_card, -1)
+
+        hero.append(top)
+        hero.append(actions)
+        hero.append(stats)
+        return hero
+
+    def _set_status_pill(self, text: str, kind: str = ""):
+        for cls in ("neutral", "ok", "warn", "err"):
+            self.hero_status.remove_css_class(cls)
+        if kind:
+            self.hero_status.add_css_class(kind)
+        self.hero_status.set_text(text)
+
+    def _update_hero(self, info, pairing: bool, bats: list[dict]):
+        try:
+            count = len(self.cards)
+        except Exception:  # noqa: BLE001
+            count = 0
+        self.hero_ctrl_value.set_text(str(count))
+        pcts = []
+        for b in bats:
+            pct = battery_pct(b)
+            if pct >= 0:
+                pcts.append(pct)
+        if pcts:
+            self.hero_bat_value.set_text(f"{round(sum(pcts) / len(pcts))}%")
+        else:
+            self.hero_bat_value.set_text("—")
+        state = getattr(info, "state", "") or ""
+        if pairing:
+            self._set_status_pill(_("Pareando…"), "warn")
+            self.hero_subtitle.set_text(
+                _("O adaptador está visível para novos controles."))
+        elif info.name == "xone":
+            self._set_status_pill(_("Conectado"), "ok")
+            if count == 1:
+                self.hero_subtitle.set_text(_("Tudo pronto. 1 controle conectado."))
+            elif count > 1:
+                self.hero_subtitle.set_text(
+                    _("Tudo pronto. {n} controles conectados.").format(n=count))
+            else:
+                self.hero_subtitle.set_text(
+                    _("Adaptador pronto. Conecte um controle para começar."))
+        elif info.name == "xow" and state != "xow-stopped":
+            self._set_status_pill(_("xow ativo"), "ok")
+            self.hero_subtitle.set_text(_("Driver legado xow em execução."))
+        elif state == "xow-stopped":
+            self._set_status_pill(_("Serviço parado"), "warn")
+            self.hero_subtitle.set_text(_("Inicie o serviço xow para conectar."))
+        elif state == "dongle-no-driver":
+            self._set_status_pill(_("Driver inativo"), "err")
+            self.hero_subtitle.set_text(
+                _("O adaptador foi detectado, mas o driver xone não está ativo."))
+        else:
+            self._set_status_pill(_("Adaptador ausente"), "err")
+            self.hero_subtitle.set_text(
+                _("Conecte o Xbox Wireless Adapter para começar."))
+        self.hero_pair_label.set_text(
+            _("Pareando…") if pairing else _("Parear controle"))
+        can_pair = info.name == "xone" or (info.name == "xow"
+                                           and state != "xow-stopped")
+        self.hero_pair_btn.set_sensitive(bool(can_pair))
+        self.hero_pair_btn.set_tooltip_text(
+            None if can_pair else _("Conecte o adaptador para parear"))
+        self.hero_test_btn.set_sensitive(bool(count))
 
     def _on_window_close(self, *_args):
         for obj in (getattr(self, "_fs_monitor", None),
@@ -2027,6 +2266,11 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _refresh_firmware_row(self):
         st = firmware.status(self._driver_name())
+        self._fw_state = st.get("state", "")
+        if hasattr(self, "hero_fw_value"):
+            self.hero_fw_value.set_text(
+                _("Instalado") if self._fw_state == "installed"
+                else _("Pendente"))
         if st["state"] == "installed":
             self.fw_row.set_subtitle(st["detail"])
         else:
@@ -2323,6 +2567,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._refresh_controllers(bats)
             self._refresh_batteries(bats)
             self._refresh_firmware_row()
+            self._update_hero(info, bool(pairing), bats)
             self._refresh_perm_row()
             if not getattr(self, "_audio_loaded", False):
                 self._audio_loaded = True
