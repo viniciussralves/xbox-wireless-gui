@@ -289,6 +289,16 @@ class MainNewCase(unittest.TestCase):
         card.set_battery_info({"percentage": -1, "state": "x"})
         card.set_battery(50, "y")
 
+    def test_tabs_and_notification_bar(self):
+        w = self._win()
+        self.assertEqual(len(w.tab_stack.get_pages()), 4)
+        self.assertEqual(w.tab_stack.get_visible_child_name(), "home")
+        w.banner.show("Controle conectado", "Controle 1 • 80%", kind="ok",
+                      timeout=None)
+        self.assertTrue(w.banner.get_revealed())
+        w.banner.set_revealed(False)
+        self.assertFalse(w.banner.get_revealed())
+
     def test_history_window(self):
         w = self._win()
         rows = [{"time": 1, "value": 50.0, "state": 2},

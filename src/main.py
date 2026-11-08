@@ -87,6 +87,19 @@ levelbar.crit block.filled { background: @error_bg_color; }
 .battery-chip.low { background: alpha(@warning_bg_color, 0.20); color: @warning_color; }
 .battery-chip.crit { background: alpha(@error_bg_color, 0.20); color: @error_color; }
 .quick-action { border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+.notification-bar {
+    margin: 10px 18px 0 18px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    background: alpha(@card_bg_color, 0.96);
+    border: 1px solid alpha(@borders, 0.65);
+}
+.notification-bar.info { border-left: 4px solid @accent_bg_color; }
+.notification-bar.ok { border-left: 4px solid @success_color; }
+.notification-bar.warn { border-left: 4px solid @warning_color; }
+.notification-bar.err { border-left: 4px solid @error_color; }
+.notification-title { font-weight: 700; }
+.notification-detail { font-size: 9.5pt; opacity: .78; }
 """
 
 # Escala única de fontes da interface: cada papel, um tamanho.
@@ -214,6 +227,119 @@ def style_bat_bar(bar: Gtk.LevelBar, pct: int):
         bar.add_css_class("crit")
     elif pct <= 50:
         bar.add_css_class("warn")
+
+
+class NotificationBar(Gtk.Revealer):
+    """Barra de notificação detalhada, com título, detalhe e ação."""
+
+    KINDS = {
+        "info": "dialog-information-symbolic",
+        "ok": "emblem-ok-symbolic",
+        "warn": "dialog-warning-symbolic",
+        "err": "dialog-error-symbolic",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
+        self.set_transition_duration(180)
+        self._timeout_id: int | None = None
+        self._action_cb = None
+        self._action_visible = False
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.add_css_class("notification-bar")
+        box.add_css_class("info")
+        self._box = box
+        self._icon = Gtk.Image.new_from_icon_name(self.KINDS["info"])
+        self._icon.set_pixel_size(20)
+        self._icon.set_valign(Gtk.Align.START)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+        text.set_hexpand(True)
+        self._title = Gtk.Label()
+        self._title.add_css_class("notification-title")
+        self._title.set_halign(Gtk.Align.START)
+        self._detail = Gtk.Label()
+        self._detail.add_css_class("notification-detail")
+        self._detail.set_halign(Gtk.Align.START)
+        self._detail.set_wrap(True)
+        self._detail.set_visible(False)
+        text.append(self._title)
+        text.append(self._detail)
+        self._action = Gtk.Button()
+        self._action.add_css_class("btn-std")
+        self._action.set_valign(Gtk.Align.CENTER)
+        self._action.set_visible(False)
+        self._action.connect("clicked", self._on_action)
+        close = Gtk.Button.new_from_icon_name("window-close-symbolic")
+        close.add_css_class("btn-icon")
+        close.set_valign(Gtk.Align.CENTER)
+        close.set_tooltip_text(_("Fechar"))
+        a11y_label(close, _("Fechar notificação"))
+        close.connect("clicked", lambda _b: self.set_revealed(False))
+        box.append(self._icon)
+        box.append(text)
+        box.append(self._action)
+        box.append(close)
+        self.set_child(box)
+
+    def _on_action(self, _b):
+        if self._action_cb is not None:
+            self._action_cb()
+        self.set_revealed(False)
+
+    def set_action(self, callback):
+        self._action_cb = callback
+
+    def set_button_label(self, label: str | None):
+        self._action_visible = bool(label)
+        self._action.set_visible(self._action_visible)
+        if label:
+            self._action.set_label(label)
+
+    def set_title(self, text: str):
+        self._title.set_text(text)
+
+    def set_detail(self, text: str):
+        self._detail.set_text(text)
+        self._detail.set_visible(bool(text))
+
+    def set_kind(self, kind: str):
+        kind = kind if kind in self.KINDS else "info"
+        for cls in ("info", "ok", "warn", "err"):
+            self._box.remove_css_class(cls)
+        self._box.add_css_class(kind)
+        self._icon.set_from_icon_name(self.KINDS[kind])
+
+    def set_revealed(self, revealed: bool):
+        if self._timeout_id is not None:
+            try:
+                GLib.source_remove(self._timeout_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self._timeout_id = None
+        self.set_reveal_child(bool(revealed))
+
+    def get_revealed(self) -> bool:
+        return bool(self.get_reveal_child())
+
+    def show(self, title: str, detail: str = "", kind: str = "info",
+             action_label: str | None = None, callback=None,
+             timeout: int | None = None):
+        self.set_kind(kind)
+        self.set_title(title)
+        self.set_detail(detail)
+        self.set_button_label(action_label)
+        if callback is not None:
+            self.set_action(callback)
+        self.set_revealed(True)
+        if timeout:
+            self._timeout_id = GLib.timeout_add_seconds(timeout, self._auto_hide)
+
+    def _auto_hide(self):
+        self._timeout_id = None
+        self.set_reveal_child(False)
+        return False
 
 
 class ControllerCard(Adw.ExpanderRow):
@@ -358,7 +484,7 @@ class ControllerCard(Adw.ExpanderRow):
             b.set_valign(Gtk.Align.CENTER)
             b.connect("clicked", lambda _b, m=motor: self._on_vibrate_motor(m))
             vib_box.append(b)
-        vib_row = Adw.ActionRow(title=_("Teste de vibração"),
+        vib_row = Adw.ActionRow(title=_("Vibração"),
                                 subtitle=_("testa os motores via evdev (ff-rumble)"))
         vib_row.add_suffix(vib_box)
         vib_row.set_activatable(False)
@@ -371,7 +497,7 @@ class ControllerCard(Adw.ExpanderRow):
         test_btn.add_css_class("btn-std")
         test_btn.set_valign(Gtk.Align.CENTER)
         test_btn.connect("clicked", self._on_test_buttons)
-        test_row = Adw.ActionRow(title=_("Testador de botões"),
+        test_row = Adw.ActionRow(title=_("Testar botões"),
                                  subtitle=_("abre o desenho do controle ao vivo"))
         test_row.add_suffix(test_btn)
         test_row.set_activatable(False)
@@ -542,7 +668,7 @@ class TesterWindow(Adw.Window):
     """Testador de botões: desenho do controle Xbox com destaque ao vivo via evdev."""
 
     def __init__(self, parent: Gtk.Window, initial_path: str | None = None):
-        super().__init__(transient_for=parent, title=_("Testador de botões"))
+        super().__init__(transient_for=parent, title=_("Testar botões"))
         self.set_default_size(580, 520)
         self._dev = None
         self._limits: dict[int, tuple[int, int]] = {}
@@ -553,7 +679,7 @@ class TesterWindow(Adw.Window):
         self._prefs = prefs.get_prefs()
 
         header = Adw.HeaderBar()
-        header.set_title_widget(Adw.WindowTitle(title=_("Testador de botões"),
+        header.set_title_widget(Adw.WindowTitle(title=_("Testar botões"),
                                                 subtitle=_("aperte os botões do controle")))
         reload_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
         reload_btn.set_tooltip_text(_("Procurar gamepads novamente"))
@@ -1210,14 +1336,17 @@ class MainWindow(Adw.ApplicationWindow):
         app.add_action(diag_act)
         self._install_shortcuts()
 
-        # ---- banner status ----
-        self.banner = Adw.Banner()
+        # ---- barra de notificação detalhada ----
+        self.banner = NotificationBar()
+        self.banner.set_action(self._on_banner_button)
         self.banner.set_revealed(False)
-        self.banner.connect("button-clicked", self._on_banner_button)
         self._banner_mode = ""
 
-        # ---- página ----
-        page = Adw.PreferencesPage()
+        # ---- páginas / abas ----
+        home_page = Adw.PreferencesPage()
+        controls_page = Adw.PreferencesPage()
+        audio_page = Adw.PreferencesPage()
+        settings_page = Adw.PreferencesPage()
 
         # Grupo adaptador
         g_ad = Adw.PreferencesGroup(
@@ -1239,25 +1368,25 @@ class MainWindow(Adw.ApplicationWindow):
         self.dongle_row.set_visible(False)
         g_ad.add(self.dongle_row)
 
-        self.pair_switch = Adw.SwitchRow(title=_("Modo pairing"),
-                                         subtitle=_("dongle visível para novos controles"))
+        self.pair_switch = Adw.SwitchRow(title=_("Parear controle"),
+                                         subtitle=_("deixe o adaptador visível para novos controles"))
         self.pair_switch.connect("notify::active", self._on_pair_switch)
         g_ad.add(self.pair_switch)
 
         self.pair_btn_box = Gtk.Box(spacing=8, homogeneous=True)
-        self.pair_btn = Gtk.Button(label=_("Ativar pairing (xow)"))
+        self.pair_btn = Gtk.Button(label=_("Parear (xow)"))
         self.pair_btn.add_css_class("suggested-action")
         self.pair_btn.add_css_class("btn-std")
         self.pair_btn.set_valign(Gtk.Align.CENTER)
         self.pair_btn.connect("clicked", self.on_pair)
         self.pair_btn_box.append(self.pair_btn)
-        pair_wrap = Adw.ActionRow(title=_("Pareamento manual"))
+        pair_wrap = Adw.ActionRow(title=_("Parear (xow)"))
         pair_wrap.add_suffix(self.pair_btn_box)
         pair_wrap.set_activatable(False)
         self.pair_manual_row = pair_wrap
         g_ad.add(pair_wrap)
 
-        self.clients_row = Adw.ActionRow(title=_("Clientes ativos"),
+        self.clients_row = Adw.ActionRow(title=_("Conectados"),
                                          subtitle=_("—"))
         self.clients_row.set_activatable(False)
         g_ad.add(self.clients_row)
@@ -1268,18 +1397,18 @@ class MainWindow(Adw.ApplicationWindow):
         off_all.set_valign(Gtk.Align.CENTER)
         off_all.connect("clicked", self._on_poweroff_all)
         self.poweroff_all_row = Adw.ActionRow(
-            title=_("Desligar controles"),
+            title=_("Desligar todos"),
             subtitle=_("desliga todos os clientes wireless do dongle"))
         self.poweroff_all_row.add_suffix(off_all)
         self.poweroff_all_row.set_activatable(False)
         g_ad.add(self.poweroff_all_row)
 
         self.wakeup_switch = Adw.SwitchRow(
-            title=_("Acordar o PC pelo controle"),
+            title=_("Acordar o PC"),
             subtitle=_("habilita wakeup no adaptador USB (xone)"))
         self.wakeup_switch.connect("notify::active", self._on_wakeup_switch)
         g_ad.add(self.wakeup_switch)
-        page.add(g_ad)
+        home_page.add(g_ad)
 
         # Grupo controles
         self.g_ctrl = Adw.PreferencesGroup(
@@ -1289,7 +1418,7 @@ class MainWindow(Adw.ApplicationWindow):
             icon_name="input-gaming-symbolic",
             title=_("Nenhum controle conectado"),
             description=_("Ative o pairing e segure o botão Xbox até piscar rápido."))
-        steps = Gtk.Label(label=_("1. Ative o modo pairing\n"
+        steps = Gtk.Label(label=_("1. Ative o pareamento\n"
                                   "2. Segure o botão Xbox até o LED piscar rápido"))
         steps.add_css_class("dim")
         steps.set_justify(Gtk.Justification.CENTER)
@@ -1311,12 +1440,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.empty_wrap = empty_box
         self.g_ctrl.add(empty_box)
         self.cards: list[ControllerCard] = []
-        page.add(self.g_ctrl)
+        controls_page.add(self.g_ctrl)
 
         # Grupo bateria
-        self.g_bat = Adw.PreferencesGroup(title=_("Bateria dos controles"))
+        self.g_bat = Adw.PreferencesGroup(title=_("Bateria"))
         self.bat_rows: list[Adw.ActionRow] = []
-        page.add(self.g_bat)
+        controls_page.add(self.g_bat)
 
         # Grupo áudio/headset (xone expõe ALSA; xow geralmente não)
         self.g_audio = Adw.PreferencesGroup(
@@ -1332,16 +1461,16 @@ class MainWindow(Adw.ApplicationWindow):
         self.audio_status_row.set_activatable(False)
         self.g_audio.add(self.audio_status_row)
         self._audio_rows.append(self.audio_status_row)
-        page.add(self.g_audio)
+        audio_page.add(self.g_audio)
 
         # Grupo Bluetooth (xpadneo/BlueZ)
         self.g_bt = Adw.PreferencesGroup(
             title=_("Bluetooth"),
             description=_("Controles Xbox pareados via BlueZ (xpadneo)"))
         self.bt_row = Adw.ActionRow(
-            title=_("Controles Bluetooth"),
+            title=_("Controles pareados"),
             subtitle=_("procure controles já pareados ou escaneie"))
-        bt_btn = Gtk.Button(label=_("Procurar"))
+        bt_btn = Gtk.Button(label=_("Buscar"))
         bt_btn.add_css_class("btn-std")
         bt_btn.set_valign(Gtk.Align.CENTER)
         bt_btn.connect("clicked", self._on_bt_scan)
@@ -1349,11 +1478,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.bt_row.set_activatable(False)
         self.g_bt.add(self.bt_row)
         self._bt_rows.append(self.bt_row)
-        page.add(self.g_bt)
+        audio_page.add(self.g_bt)
 
         # Grupo sistema
-        g_sys = Adw.PreferencesGroup(title=_("Sistema e ajustes"))
-        self.fw_row = Adw.ActionRow(title=_("Firmware do dongle"))
+        g_sys = Adw.PreferencesGroup(title=_("Sistema"))
+        self.fw_row = Adw.ActionRow(title=_("Firmware"))
         fw_box = Gtk.Box(spacing=8)
         fw_box.set_valign(Gtk.Align.CENTER)
         self.fw_spin = Gtk.Spinner()
@@ -1383,7 +1512,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.rumble_dur.set_size_request(180, -1)
         self.rumble_dur.set_valign(Gtk.Align.CENTER)
         self.rumble_dur.connect("value-changed", self._on_rumble_dur)
-        dur_row = Adw.ActionRow(title=_("Duração da vibração"),
+        dur_row = Adw.ActionRow(title=_("Duração"),
                                 subtitle=_("milissegundos por teste"))
         dur_row.add_suffix(self.rumble_dur)
         dur_row.set_activatable(False)
@@ -1396,7 +1525,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.rumble_int.set_size_request(180, -1)
         self.rumble_int.set_valign(Gtk.Align.CENTER)
         self.rumble_int.connect("value-changed", self._on_rumble_int)
-        int_row = Adw.ActionRow(title=_("Intensidade da vibração"),
+        int_row = Adw.ActionRow(title=_("Intensidade"),
                                 subtitle=_("vale para os dois motores"))
         int_row.add_suffix(self.rumble_int)
         int_row.set_activatable(False)
@@ -1421,7 +1550,7 @@ class MainWindow(Adw.ApplicationWindow):
         perm_box.set_valign(Gtk.Align.CENTER)
         self.perm_spin = Gtk.Spinner()
         self.perm_spin.set_visible(False)
-        self.perm_btn = Gtk.Button(label=_("Corrigir"))
+        self.perm_btn = Gtk.Button(label=_("Ajustar"))
         self.perm_btn.add_css_class("btn-std")
         self.perm_btn.set_valign(Gtk.Align.CENTER)
         self.perm_btn.set_tooltip_text(
@@ -1433,21 +1562,21 @@ class MainWindow(Adw.ApplicationWindow):
         self.perm_row.set_activatable(False)
         g_sys.add(self.perm_row)
 
-        vib_all = Gtk.Button(label=_("Vibrar todos"))
+        vib_all = Gtk.Button(label=_("Testar todos"))
         vib_all.add_css_class("btn-std")
         vib_all.set_valign(Gtk.Align.CENTER)
         vib_all.connect("clicked", self._on_vibrate_all)
-        vib_row = Adw.ActionRow(title=_("Teste de vibração"),
+        vib_row = Adw.ActionRow(title=_("Vibração"),
                                 subtitle=_("envia rumble a todos os gamepads Xbox"))
         vib_row.add_suffix(vib_all)
         vib_row.set_activatable(False)
         g_sys.add(vib_row)
 
-        test_all = Gtk.Button(label=_("Abrir testador"))
+        test_all = Gtk.Button(label=_("Abrir"))
         test_all.add_css_class("btn-std")
         test_all.set_valign(Gtk.Align.CENTER)
         test_all.connect("clicked", self._on_open_tester)
-        test_row = Adw.ActionRow(title=_("Testador de botões"),
+        test_row = Adw.ActionRow(title=_("Testar botões"),
                                  subtitle=_("desenho do controle com resposta ao vivo"))
         test_row.add_suffix(test_all)
         test_row.set_activatable(False)
@@ -1471,7 +1600,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Remapeamento via input-remapper (não reimplementamos uinput)
         self.remap_row = Adw.ActionRow(
-            title=_("Remapeamento de botões"),
+            title=_("Remapear botões"),
             subtitle=remap.hint())
         remap_btn = Gtk.Button(label=_("Abrir"))
         remap_btn.add_css_class("btn-std")
@@ -1519,7 +1648,7 @@ class MainWindow(Adw.ApplicationWindow):
         g_sys.add(self.notify_switch)
 
         self.updates_switch = Adw.SwitchRow(
-            title=_("Verificar atualizações"),
+            title=_("Atualizações automáticas"),
             subtitle=_("consulta releases no GitHub ao abrir"))
         self.updates_switch.set_active(self._prefs.get_bool("check-updates"))
         self.updates_switch.connect("notify::active", self._on_check_updates_pref)
@@ -1532,7 +1661,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.pair_auto.set_selected(self._pair_auto_index())
         self.pair_auto.connect("notify::selected", self._on_pair_auto)
         self.pair_auto_row = Adw.ActionRow(
-            title=_("Desligar pairing automaticamente"),
+            title=_("Desligar pareamento"),
             subtitle=_("evita deixar o dongle pareável para sempre"))
         self.pair_auto_row.add_suffix(self.pair_auto)
         self.pair_auto_row.set_activatable(False)
@@ -1543,7 +1672,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.refresh_spin.set_valign(Gtk.Align.CENTER)
         self.refresh_spin.connect("value-changed", self._on_refresh_interval)
         self.refresh_row = Adw.ActionRow(
-            title=_("Intervalo de atualização"),
+            title=_("Atualizar a cada"),
             subtitle=_("segundos entre atualizações automáticas"))
         self.refresh_row.add_suffix(self.refresh_spin)
         self.refresh_row.set_activatable(False)
@@ -1554,7 +1683,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.low_bat_spin.set_valign(Gtk.Align.CENTER)
         self.low_bat_spin.connect("value-changed", self._on_low_battery)
         self.low_bat_row = Adw.ActionRow(
-            title=_("Aviso de bateria baixa"),
+            title=_("Aviso de bateria"),
             subtitle=_("percentual para notificar (quando confiável)"))
         self.low_bat_row.add_suffix(self.low_bat_spin)
         self.low_bat_row.set_activatable(False)
@@ -1565,11 +1694,11 @@ class MainWindow(Adw.ApplicationWindow):
         reset_btn.set_valign(Gtk.Align.CENTER)
         reset_btn.connect("clicked", self._on_reset_prefs)
         self.reset_row = Adw.ActionRow(
-            title=_("Preferências"), subtitle=_("voltar aos valores padrão"))
+            title=_("Padrões"), subtitle=_("voltar aos valores padrão"))
         self.reset_row.add_suffix(reset_btn)
         self.reset_row.set_activatable(False)
         g_sys.add(self.reset_row)
-        page.add(g_sys)
+        settings_page.add(g_sys)
 
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
         content.set_margin_top(18)
@@ -1577,7 +1706,25 @@ class MainWindow(Adw.ApplicationWindow):
         content.set_margin_start(18)
         content.set_margin_end(18)
         content.append(self._build_hero())
-        content.append(page)
+
+        stack = Adw.ViewStack()
+        stack.set_vexpand(True)
+        stack.add_titled_with_icon(home_page, "home", _("Início"),
+                                   "go-home-symbolic")
+        stack.add_titled_with_icon(controls_page, "controls", _("Controles"),
+                                   "input-gaming-symbolic")
+        stack.add_titled_with_icon(audio_page, "audio", _("Áudio"),
+                                   "audio-volume-high-symbolic")
+        stack.add_titled_with_icon(settings_page, "settings", _("Configurações"),
+                                   "preferences-system-symbolic")
+        self.tab_stack = stack
+        switcher = Adw.ViewSwitcher()
+        switcher.set_stack(stack)
+        switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
+        switcher.set_halign(Gtk.Align.CENTER)
+        content.append(switcher)
+        content.append(stack)
+
         clamp = Adw.Clamp()
         clamp.set_maximum_size(860)
         clamp.set_tightening_threshold(680)
@@ -1823,7 +1970,11 @@ class MainWindow(Adw.ApplicationWindow):
                 "(akmods/DKMS ou COPR) e reinicie a sessão.\n"
                 "xbox-wireless-gui --diagnose")
 
-    def _notify(self, title: str, body: str = ""):
+    def _notify(self, title: str, body: str = "", kind: str = "info"):
+        try:
+            self.banner.show(title, body, kind=kind, timeout=8)
+        except Exception:  # noqa: BLE001
+            pass
         if not self._prefs.get_bool("notifications"):
             return
         try:
@@ -1996,6 +2147,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _poweroff_done(self, ok: bool, msg: str):
         self.toast(msg)
+        self.banner.show(_("Energia") if ok else _("Falha ao desligar"),
+                         msg, kind="ok" if ok else "err", timeout=8)
         if ok:
             self.on_refresh()
         return False
@@ -2024,9 +2177,12 @@ class MainWindow(Adw.ApplicationWindow):
         ok, msg = remap.open_tool()
         if ok:
             self.toast(msg)
+            self.banner.show(_("Remapeamento"), msg, kind="ok", timeout=8)
             return
         self.copy_text(remap.hint())
         self.toast(_("input-remapper não encontrado — dica copiada"))
+        self.banner.show(_("input-remapper não encontrado"),
+                         remap.hint(), kind="warn", timeout=8)
 
     def _on_diagnostics(self, *_args):
         self.toast(_("coletando diagnóstico…"))
@@ -2069,9 +2225,13 @@ class MainWindow(Adw.ApplicationWindow):
         threading.Thread(target=work, daemon=True).start()
 
     def _xow_action(self, action: str):
+        def show(msg: str):
+            self.toast(msg)
+            self.banner.show(_("Serviço xow"), msg, kind="info", timeout=8)
+
         def work():
             ok, msg = xow.service_control(action)
-            GLib.idle_add(self.toast, msg)
+            GLib.idle_add(show, msg)
             GLib.idle_add(lambda: self.on_refresh() or False)
         threading.Thread(target=work, daemon=True).start()
 
@@ -2115,7 +2275,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.toast(_("Nenhum controle Bluetooth pareado. "
                          "Pareie pelo bluetoothctl/Configurações."))
             return False
-        win = Adw.Window(transient_for=self, title=_("Controles Bluetooth"))
+        win = Adw.Window(transient_for=self, title=_("Controles pareados"))
         win.set_default_size(520, 380)
         header = Adw.HeaderBar()
         page = Adw.PreferencesPage()
@@ -2138,11 +2298,15 @@ class MainWindow(Adw.ApplicationWindow):
         return False
 
     def _bt_connect(self, mac: str):
+        def show(msg: str):
+            self.toast(msg)
+            self.banner.show(_("Bluetooth"), msg, kind="ok", timeout=8)
+
         def work():
             ok, msg = bluetooth.connect(mac)
             if ok:
                 bluetooth.trust(mac)
-            GLib.idle_add(self.toast, msg)
+            GLib.idle_add(show, msg)
             GLib.idle_add(lambda: self.on_refresh() or False)
         threading.Thread(target=work, daemon=True).start()
 
@@ -2311,6 +2475,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.fw_spin.stop()
         self.fw_spin.set_visible(False)
         self.toast(msg)
+        self.banner.show(_("Firmware") if ok else _("Falha no firmware"),
+                         msg, kind="ok" if ok else "err", timeout=8)
         self._refresh_firmware_row()
         return False
 
@@ -2341,6 +2507,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.perm_spin.stop()
         self.perm_spin.set_visible(False)
         self.toast(msg)
+        self.banner.show(_("Permissões") if ok else _("Falha nas permissões"),
+                         msg, kind="ok" if ok else "err", timeout=8)
         self._refresh_perm_row(force=True)
         self.on_refresh()
         return False
@@ -2383,6 +2551,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.upd_btn.set_label(_("Abrir"))
         self.upd_notes_btn.set_visible(bool(body))
         self.toast(_("Nova versão {t} disponível").format(t=tag))
+        self.banner.show(_("Atualização disponível"),
+                         _("Versão {t} publicada no GitHub.").format(t=tag),
+                         kind="info", timeout=10)
         return False
 
     def _on_update_notes(self, _b):
@@ -2436,7 +2607,7 @@ class MainWindow(Adw.ApplicationWindow):
         def tick():
             self._xow_left -= 1
             if self._xow_left <= 0:
-                self.pair_btn.set_label(_("Ativar pairing (xow)"))
+                self.pair_btn.set_label(_("Parear (xow)"))
                 self.pair_btn.set_sensitive(True)
                 self._xow_countdown_id = None
                 self.on_refresh()
@@ -2517,14 +2688,17 @@ class MainWindow(Adw.ApplicationWindow):
                 else:
                     self.driver_row.set_subtitle(
                         _("serviço ativo: {s}").format(s=xow.service_active()))
-                    self.pair_btn.set_label(_("Ativar pairing (xow)"))
+                    self.pair_btn.set_label(_("Parear (xow)"))
                     self.pair_btn.set_sensitive(not stopped)
                 self.pair_switch.set_visible(False)
                 self.pair_manual_row.set_visible(not stopped)
                 self.banner.set_revealed(stopped)
                 if stopped:
                     self._banner_mode = "xow-stopped"
+                    self.banner.set_kind("warn")
                     self.banner.set_title(_("Serviço xow está parado"))
+                    self.banner.set_detail(
+                        _("Inicie o serviço para voltar a conectar controles."))
                     self.banner.set_button_label(_("Iniciar xow"))
             else:
                 self._cancel_xow_countdown()
@@ -2539,12 +2713,16 @@ class MainWindow(Adw.ApplicationWindow):
                     else _("plugue o adaptador 045e:02e6/02d1"))
                 self.pair_switch.set_visible(False)
                 self.pair_manual_row.set_visible(False)
-                self.pair_btn.set_label(_("Ativar pairing (xow)"))
+                self.pair_btn.set_label(_("Parear (xow)"))
                 self.pair_btn.set_sensitive(True)
                 self._banner_mode = "no-driver" if no_driver else ""
+                self.banner.set_kind("err" if no_driver else "warn")
                 self.banner.set_title(
                     _("Dongle USB sem driver xone") if no_driver
                     else _("Adaptador não encontrado"))
+                self.banner.set_detail(
+                    info.detail if no_driver
+                    else _("Conecte o adaptador Xbox Wireless para começar."))
                 self.banner.set_button_label(
                     _("Copiar comando") if no_driver else None)
                 self.banner.set_revealed(True)
@@ -2614,10 +2792,10 @@ class MainWindow(Adw.ApplicationWindow):
             removed = self._last_conn - current
             if added:
                 self._notify(_("Controle conectado"),
-                             ", ".join(sorted(added)))
+                             ", ".join(sorted(added)), kind="ok")
             if removed:
                 self._notify(_("Controle desconectado"),
-                             ", ".join(sorted(removed)))
+                             ", ".join(sorted(removed)), kind="warn")
         self._last_conn = current
 
     def _check_low_battery(self, bats: list[dict]):
@@ -2637,7 +2815,8 @@ class MainWindow(Adw.ApplicationWindow):
                 self._notify(_("Bateria baixa"),
                              _("{d}: {l}").format(
                                  d=b.get("device", "?"),
-                                 l=battery_level_text(b) or "?"))
+                                 l=battery_level_text(b) or "?"),
+                             kind="warn")
             elif not low:
                 self._low_notified.discard(key)
 
@@ -2891,6 +3070,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.pair_switch.set_sensitive(True)
         self.pair_btn.set_sensitive(True)
         self.toast(msg)
+        self.banner.show(
+            _("Pareamento") if ok else _("Falha no pareamento"),
+            msg, kind="ok" if ok else "err", timeout=8)
         if ok and on_ok is not None:
             on_ok()
         self.on_refresh()

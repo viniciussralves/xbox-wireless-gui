@@ -11,10 +11,12 @@ Empacotamento alvo: **Fedora (RPM/COPR)**.
 
 ![Janela principal](data/screenshots/main-window.png)
 
+![Barra de notificação detalhada](data/screenshots/notification-bar.png)
+
 ## Estado atual (testado em Fedora 44 KDE)
 - `xone_dongle` + dongle `045e:02e6` detectados, `pairing=0`, controle conectado.
 - GTK4 + Libadwaita + UPowerGlib OK. `python3-evdev`, `evtest` instalados via dnf.
-- Suite com 246 testes, cobertura de linha ≥95% em `src/`.
+- Suite com 247 testes, cobertura de linha ≥95% em `src/`.
 
 ## Uso (dev)
 ```sh
@@ -55,6 +57,8 @@ python3 src/main.py --verbose --status
 - **Bluetooth**: lista controles Xbox pareados no BlueZ e conecta/confia.
 - **Diagnóstico copiável**: kernel, distro, módulo xone/versão, Secure Boot, dongle, clientes ativos, firmware, udev/grupo, evdev, UPower e áudio.
 - **Notificações** de conexão/desconexão e bateria baixa.
+- **Dashboard em abas**: Início, Controles, Áudio e Configurações, com nomes simples e foco em cada tarefa.
+- **Barra de notificação detalhada** com título, descrição, ação e fechamento para conexão, pareamento, firmware, permissões e bateria.
 - **CLI** para Waybar/scripts e **wakeup** do PC pelo controle.
 - **Atualização orientada a eventos**: Gio.FileMonitor em `/dev/input`/LEDs + sinais do UPower, com polling como fallback.
 - **API D-Bus de sessão** (`com.github.xboxwirelessgui.Control1`): status, refresh, present, pairing, LED e poweroff para Waybar/Stream Deck/extensões.
