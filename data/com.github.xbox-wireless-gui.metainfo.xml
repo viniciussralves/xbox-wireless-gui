@@ -26,7 +26,7 @@
   <url type="vcs-browser">https://github.com/viniciussralves/xbox-wireless-gui</url>
   <screenshots>
     <screenshot type="default">
-      <caption>Controles, pairing, desligar e wakeup do adaptador</caption>
+      <caption>Dashboard com status, ações rápidas e resumo do adaptador</caption>
       <image>https://raw.githubusercontent.com/viniciussralves/xbox-wireless-gui/main/data/screenshots/main-window.png</image>
     </screenshot>
   </screenshots>
