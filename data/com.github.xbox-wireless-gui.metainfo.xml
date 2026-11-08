@@ -29,6 +29,10 @@
       <caption>Dashboard com status, ações rápidas e resumo do adaptador</caption>
       <image>https://raw.githubusercontent.com/viniciussralves/xbox-wireless-gui/main/data/screenshots/main-window.png</image>
     </screenshot>
+    <screenshot>
+      <caption>Barra de notificação detalhada com ação e fechamento</caption>
+      <image>https://raw.githubusercontent.com/viniciussralves/xbox-wireless-gui/main/data/screenshots/notification-bar.png</image>
+    </screenshot>
   </screenshots>
   <developer id="com.github.viniciussralves">
     <name>theone</name>

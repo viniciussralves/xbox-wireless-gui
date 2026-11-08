@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: xbox-wireless-gui 0.3.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-07 23:51-0300\n"
+"POT-Creation-Date: 2026-11-08 09:11-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,1004 +17,1162 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/main.py:62
+#: src/main.py:126
 #, python-brace-format
 msgid "{t} restantes"
 msgstr ""
 
-#: src/main.py:64
+#: src/main.py:128
 msgid "carregado"
 msgstr ""
 
-#: src/main.py:66
+#: src/main.py:130
 #, python-brace-format
 msgid "cheio em {t}"
 msgstr ""
 
-#: src/main.py:80 src/backend/battery.py:67
+#: src/main.py:144 src/backend/battery.py:67
 msgid "cheio"
 msgstr ""
 
-#: src/main.py:81 src/backend/battery.py:66
+#: src/main.py:145 src/backend/battery.py:66
 msgid "alto"
 msgstr ""
 
-#: src/main.py:82 src/backend/battery.py:65
+#: src/main.py:146 src/backend/battery.py:65
 msgid "normal"
 msgstr ""
 
-#: src/main.py:83 src/backend/battery.py:62 src/backend/battery.py:63
+#: src/main.py:147 src/backend/battery.py:62 src/backend/battery.py:63
 msgid "baixo"
 msgstr ""
 
-#: src/main.py:84 src/backend/battery.py:64
+#: src/main.py:148 src/backend/battery.py:64
 msgid "crítico"
 msgstr ""
 
-#: src/main.py:115
+#: src/main.py:179
 msgid "Dongle xone"
 msgstr ""
 
-#: src/main.py:119 src/main.py:331 src/main.py:1266
+#: src/main.py:183 src/main.py:512 src/main.py:1468 src/main.py:2303
 msgid "Bluetooth"
 msgstr ""
 
-#: src/main.py:122
+#: src/main.py:186
 msgid "USB/evdev"
 msgstr ""
 
-#: src/main.py:123 src/backend/battery.py:60
+#: src/main.py:187 src/backend/battery.py:60
 msgid "desconhecido"
 msgstr ""
 
-#: src/main.py:140
+#: src/main.py:204
 msgid "Desligado"
 msgstr ""
 
-#: src/main.py:141
+#: src/main.py:205
 msgid "Ligado"
 msgstr ""
 
-#: src/main.py:142
+#: src/main.py:206
 msgid "Piscar rápido"
 msgstr ""
 
-#: src/main.py:143
+#: src/main.py:207
 msgid "Piscar normal"
 msgstr ""
 
-#: src/main.py:144
+#: src/main.py:208
 msgid "Piscar lento"
 msgstr ""
 
-#: src/main.py:145
+#: src/main.py:209
 msgid "Fade lento"
 msgstr ""
 
-#: src/main.py:146
+#: src/main.py:210
 msgid "Fade rápido"
 msgstr ""
 
-#: src/main.py:189
+#: src/main.py:277
+msgid "Fechar"
+msgstr ""
+
+#: src/main.py:278
+msgid "Fechar notificação"
+msgstr ""
+
+#: src/main.py:370
 #, python-brace-format
 msgid "serial {s}"
 msgstr ""
 
-#: src/main.py:192
+#: src/main.py:373
 msgid "Informações"
 msgstr ""
 
-#: src/main.py:196
+#: src/main.py:377
 msgid "Renomear"
 msgstr ""
 
-#: src/main.py:202 src/main.py:203
+#: src/main.py:383 src/main.py:384
 msgid "Copiar informações do controle"
 msgstr ""
 
-#: src/main.py:225 src/main.py:226 src/main.py:1008 src/main.py:1015
-#: src/main.py:2594 src/main.py:2595
+#: src/main.py:406 src/main.py:407 src/main.py:1196 src/main.py:1203
+#: src/main.py:3018 src/main.py:3019
 msgid "Histórico de bateria"
 msgstr ""
 
-#: src/main.py:231 src/main.py:1244
+#: src/main.py:412 src/main.py:1446
 msgid "Bateria"
 msgstr ""
 
-#: src/main.py:231 src/main.py:364
+#: src/main.py:412 src/main.py:552
 msgid "via UPower"
 msgstr ""
 
-#: src/main.py:253
+#: src/main.py:434
 msgid "Modo do LED (preserva o atual por padrão)"
 msgstr ""
 
-#: src/main.py:261
+#: src/main.py:442
 msgid "Aplicar"
 msgstr ""
 
-#: src/main.py:272
-msgid "Brilho do LED Xbox"
-msgstr ""
-
-#: src/main.py:273
-#, python-brace-format
-msgid "mode atual: {mode} • ajuste modo + brilho e clique em Aplicar"
-msgstr ""
-
-#: src/main.py:281 src/main.py:1742
-msgid "Desligar"
-msgstr ""
-
-#: src/main.py:287
-msgid "Desligar controle"
-msgstr ""
-
-#: src/main.py:288
-msgid "envia poweroff ao dongle; religue com o botão Xbox"
-msgstr ""
-
-#: src/main.py:294
-msgid "Vibrar"
-msgstr ""
-
-#: src/main.py:300
-msgid "Forte"
-msgstr ""
-
-#: src/main.py:300
-msgid "Fraco"
-msgstr ""
-
-#: src/main.py:306 src/main.py:1367
-msgid "Teste de vibração"
-msgstr ""
-
-#: src/main.py:307
-msgid "testa os motores via evdev (ff-rumble)"
-msgstr ""
-
-#: src/main.py:314
-msgid "Testar botões"
-msgstr ""
-
-#: src/main.py:319 src/main.py:483 src/main.py:494 src/main.py:1377
-msgid "Testador de botões"
-msgstr ""
-
-#: src/main.py:320
-msgid "abre o desenho do controle ao vivo"
-msgstr ""
-
-#: src/main.py:327
-msgid "Desconectar"
-msgstr ""
-
-#: src/main.py:332
-msgid "desconecta este controle (pode parear de novo depois)"
-msgstr ""
-
-#: src/main.py:342
-msgid "sem dados"
-msgstr ""
-
-#: src/main.py:358 src/main.py:2606
-#, python-brace-format
-msgid "nível {lvl}"
-msgstr ""
-
-#: src/main.py:362 src/main.py:2610
-msgid "estimativa pelo nível"
-msgstr ""
-
-#: src/main.py:451
-#, python-brace-format
-msgid "Controle: {n}"
-msgstr ""
-
-#: src/main.py:452
-#, python-brace-format
-msgid "Conexão: {c}"
-msgstr ""
-
 #: src/main.py:453
-#, python-brace-format
-msgid "Serial: {s}"
+msgid "Brilho do LED Xbox"
 msgstr ""
 
 #: src/main.py:454
 #, python-brace-format
+msgid "mode atual: {mode} • ajuste modo + brilho e clique em Aplicar"
+msgstr ""
+
+#: src/main.py:462 src/main.py:2132
+msgid "Desligar"
+msgstr ""
+
+#: src/main.py:468
+msgid "Desligar controle"
+msgstr ""
+
+#: src/main.py:469
+msgid "envia poweroff ao dongle; religue com o botão Xbox"
+msgstr ""
+
+#: src/main.py:475
+msgid "Vibrar"
+msgstr ""
+
+#: src/main.py:481
+msgid "Forte"
+msgstr ""
+
+#: src/main.py:481
+msgid "Fraco"
+msgstr ""
+
+#: src/main.py:487 src/main.py:1569
+msgid "Vibração"
+msgstr ""
+
+#: src/main.py:488
+msgid "testa os motores via evdev (ff-rumble)"
+msgstr ""
+
+#: src/main.py:495 src/main.py:500 src/main.py:671 src/main.py:682
+#: src/main.py:1579
+msgid "Testar botões"
+msgstr ""
+
+#: src/main.py:501
+msgid "abre o desenho do controle ao vivo"
+msgstr ""
+
+#: src/main.py:508
+msgid "Desconectar"
+msgstr ""
+
+#: src/main.py:513
+msgid "desconecta este controle (pode parear de novo depois)"
+msgstr ""
+
+#: src/main.py:524
+msgid "sem dados"
+msgstr ""
+
+#: src/main.py:546 src/main.py:3030
+#, python-brace-format
+msgid "nível {lvl}"
+msgstr ""
+
+#: src/main.py:550 src/main.py:3034
+msgid "estimativa pelo nível"
+msgstr ""
+
+#: src/main.py:639
+#, python-brace-format
+msgid "Controle: {n}"
+msgstr ""
+
+#: src/main.py:640
+#, python-brace-format
+msgid "Conexão: {c}"
+msgstr ""
+
+#: src/main.py:641
+#, python-brace-format
+msgid "Serial: {s}"
+msgstr ""
+
+#: src/main.py:642
+#, python-brace-format
 msgid "evdev: {p}"
 msgstr ""
 
-#: src/main.py:455
+#: src/main.py:643
 #, python-brace-format
 msgid "LED: {l}"
 msgstr ""
 
-#: src/main.py:495
+#: src/main.py:683
 msgid "aperte os botões do controle"
 msgstr ""
 
-#: src/main.py:497 src/main.py:498
+#: src/main.py:685 src/main.py:686
 msgid "Procurar gamepads novamente"
 msgstr ""
 
-#: src/main.py:502 src/main.py:503
+#: src/main.py:690 src/main.py:691
 msgid "Copiar estado atual"
 msgstr ""
 
-#: src/main.py:509
+#: src/main.py:697
 msgid "Gamepad evdev"
 msgstr ""
 
-#: src/main.py:512
+#: src/main.py:700
 msgid "Gamepad"
 msgstr ""
 
-#: src/main.py:527
+#: src/main.py:715
 msgid "Desenho do controle Xbox com botões e eixos ao vivo"
 msgstr ""
 
-#: src/main.py:530
+#: src/main.py:718
 msgid "Use o testador para conferir botões, gatilhos e analógicos"
 msgstr ""
 
-#: src/main.py:532 src/main.py:779
+#: src/main.py:720 src/main.py:967
 msgid "Nenhum botão pressionado"
 msgstr ""
 
-#: src/main.py:552
+#: src/main.py:740
 msgid "Ignora tremores pequenos dos analógicos"
 msgstr ""
 
-#: src/main.py:554
+#: src/main.py:742
 msgid "Zona morta"
 msgstr ""
 
-#: src/main.py:555
+#: src/main.py:743
 msgid "vale só para o desenho do testador"
 msgstr ""
 
-#: src/main.py:562
+#: src/main.py:750
 msgid "eventos evdev aparecem aqui"
 msgstr ""
 
-#: src/main.py:574
+#: src/main.py:762
 msgid "Mapeamento"
 msgstr ""
 
-#: src/main.py:575
+#: src/main.py:763
 msgid "código evdev → botão do desenho"
 msgstr ""
 
-#: src/main.py:585
+#: src/main.py:773
 msgid ""
 "Dica: o dispositivo virtual “X-Box 360 pad” espelha o real — teste no "
 "“Microsoft Xbox Controller”."
 msgstr ""
 
-#: src/main.py:625
+#: src/main.py:813
 msgid "Nenhum gamepad evdev encontrado (python3-evdev instalado?)"
 msgstr ""
 
-#: src/main.py:670
+#: src/main.py:858
 msgid "python3-evdev não instalado"
 msgstr ""
 
-#: src/main.py:695
+#: src/main.py:883
 #, python-brace-format
 msgid "Lendo {name} — aperte os botões…"
 msgstr ""
 
-#: src/main.py:699
+#: src/main.py:887
 #, python-brace-format
 msgid "Sem permissão em {path} (uaccess/udev ou grupo xboxwireless)"
 msgstr ""
 
-#: src/main.py:701
+#: src/main.py:889
 #, python-brace-format
 msgid "Falha ao abrir {path}: {e}"
 msgstr ""
 
-#: src/main.py:717
+#: src/main.py:905
 msgid "Dispositivo desconectado"
 msgstr ""
 
-#: src/main.py:756
+#: src/main.py:944
 #, python-brace-format
 msgid "Erro de leitura: {e}"
 msgstr ""
 
-#: src/main.py:771 src/main.py:791
+#: src/main.py:959 src/main.py:979
 #, python-brace-format
 msgid "Pressionados: {n}"
 msgstr ""
 
-#: src/main.py:777
+#: src/main.py:965
 #, python-brace-format
 msgid "D-Pad: x={x:+d} y={y:+d}"
 msgstr ""
 
-#: src/main.py:789
+#: src/main.py:977
 #, python-brace-format
 msgid "Dispositivo: {n} ({p})"
 msgstr ""
 
-#: src/main.py:795
+#: src/main.py:983
 msgid "Últimos eventos:"
 msgstr ""
 
-#: src/main.py:1017
+#: src/main.py:1205
 msgid "Copiar resumo"
 msgstr ""
 
-#: src/main.py:1029
+#: src/main.py:1217
 #, python-brace-format
 msgid "Histórico de bateria de {d}"
 msgstr ""
 
-#: src/main.py:1035
+#: src/main.py:1223
 #, python-brace-format
 msgid "{n} amostras • mínimo {mn:.0f}% • máximo {mx:.0f}% • último {last:.0f}%"
 msgstr ""
 
-#: src/main.py:1040 src/main.py:1079
+#: src/main.py:1228 src/main.py:1267
 msgid "sem histórico do UPower"
 msgstr ""
 
-#: src/main.py:1056
+#: src/main.py:1244
 #, python-brace-format
 msgid "{d}: {n} amostras, mínimo {mn}%, máximo {mx}%, último {last}%"
 msgstr ""
 
-#: src/main.py:1127
+#: src/main.py:1316
+msgid "Central de controle"
+msgstr ""
+
+#: src/main.py:1318
 msgid "Menu"
 msgstr ""
 
-#: src/main.py:1129 src/main.py:1413 src/main.py:1801
+#: src/main.py:1320 src/main.py:1615 src/main.py:1824 src/main.py:2196
 msgid "Diagnóstico"
 msgstr ""
 
-#: src/main.py:1130
+#: src/main.py:1321
 msgid "Sobre"
 msgstr ""
 
-#: src/main.py:1134 src/main.py:1135 src/main.py:1254
+#: src/main.py:1325 src/main.py:1326 src/main.py:1456
 msgid "Atualizar"
 msgstr ""
 
-#: src/main.py:1159
-msgid "Adaptador Wireless"
+#: src/main.py:1353
+msgid "Conexão"
 msgstr ""
 
-#: src/main.py:1160
-msgid "Dongle Microsoft 045e:02e6 / 02d1 via driver xone (ou xow legado)"
-msgstr ""
-
-#: src/main.py:1161
-msgid "Detectando…"
-msgstr ""
-
-#: src/main.py:1168
-msgid "Qual dongle usar para pairing/LED"
-msgstr ""
-
-#: src/main.py:1171
-msgid "Dongle"
-msgstr ""
-
-#: src/main.py:1177
-msgid "Modo pairing"
-msgstr ""
-
-#: src/main.py:1178
-msgid "dongle visível para novos controles"
-msgstr ""
-
-#: src/main.py:1183 src/main.py:2195 src/main.py:2276 src/main.py:2298
-msgid "Ativar pairing (xow)"
-msgstr ""
-
-#: src/main.py:1189
-msgid "Pareamento manual"
-msgstr ""
-
-#: src/main.py:1195
-msgid "Clientes ativos"
-msgstr ""
-
-#: src/main.py:1196
-msgid "—"
-msgstr ""
-
-#: src/main.py:1200
-msgid "Desligar todos"
-msgstr ""
-
-#: src/main.py:1206
-msgid "Desligar controles"
-msgstr ""
-
-#: src/main.py:1207
-msgid "desliga todos os clientes wireless do dongle"
-msgstr ""
-
-#: src/main.py:1213
-msgid "Acordar o PC pelo controle"
-msgstr ""
-
-#: src/main.py:1214
-msgid "habilita wakeup no adaptador USB (xone)"
-msgstr ""
-
-#: src/main.py:1221
-msgid "Controles"
-msgstr ""
-
-#: src/main.py:1222
-msgid "Conectados ao dongle • expanda para LED e vibração"
-msgstr ""
-
-#: src/main.py:1225
-msgid "Nenhum controle conectado"
-msgstr ""
-
-#: src/main.py:1226
-msgid "Ative o pairing e segure o botão Xbox até piscar rápido."
-msgstr ""
-
-#: src/main.py:1227
-msgid "Ativar pairing agora"
-msgstr ""
-
-#: src/main.py:1250
-msgid "Áudio e headset"
-msgstr ""
-
-#: src/main.py:1251
-msgid "sinks/sources do adaptador via PipeWire/PulseAudio"
-msgstr ""
-
-#: src/main.py:1253
-msgid "Áudio do Xbox"
-msgstr ""
-
-#: src/main.py:1253
-msgid "verificando…"
-msgstr ""
-
-#: src/main.py:1267
-msgid "controles Xbox pareados via BlueZ (xpadneo)"
-msgstr ""
-
-#: src/main.py:1269 src/main.py:1879
-msgid "Controles Bluetooth"
-msgstr ""
-
-#: src/main.py:1270
-msgid "procure controles já pareados ou escaneie"
-msgstr ""
-
-#: src/main.py:1271
-msgid "Procurar"
-msgstr ""
-
-#: src/main.py:1282
-msgid "Sistema e firmware"
-msgstr ""
-
-#: src/main.py:1283
-msgid "Firmware do dongle"
-msgstr ""
-
-#: src/main.py:1288 src/main.py:2044
-msgid "Instalar"
-msgstr ""
-
-#: src/main.py:1291
-msgid "Roda o script oficial com pkexec"
-msgstr ""
-
-#: src/main.py:1294
-msgid "Copiar comando de firmware (xone/xow)"
-msgstr ""
-
-#: src/main.py:1313
-msgid "Duração da vibração"
-msgstr ""
-
-#: src/main.py:1314
-msgid "milissegundos por teste"
-msgstr ""
-
-#: src/main.py:1326
-msgid "Intensidade da vibração"
-msgstr ""
-
-#: src/main.py:1327
-msgid "vale para os dois motores"
-msgstr ""
-
-#: src/main.py:1339
-msgid "Motor fraco"
-msgstr ""
-
-#: src/main.py:1340
-msgid "intensidade independente do motor fraco"
-msgstr ""
-
-#: src/main.py:1346
-msgid "Permissões"
-msgstr ""
-
-#: src/main.py:1351
-msgid "Corrigir"
+#: src/main.py:1354
+msgid "Adaptador, pairing e energia em um só lugar"
 msgstr ""
 
 #: src/main.py:1355
-msgid "Instala a regra udev e ajusta o grupo xboxwireless"
+msgid "Detectando…"
 msgstr ""
 
-#: src/main.py:1363
-msgid "Vibrar todos"
+#: src/main.py:1362
+msgid "Qual dongle usar para pairing/LED"
 msgstr ""
 
-#: src/main.py:1368
-msgid "envia rumble a todos os gamepads Xbox"
+#: src/main.py:1365
+msgid "Dongle"
 msgstr ""
 
-#: src/main.py:1373
-msgid "Abrir testador"
+#: src/main.py:1371 src/main.py:1817 src/main.py:1904
+msgid "Parear controle"
 msgstr ""
 
-#: src/main.py:1378
-msgid "desenho do controle com resposta ao vivo"
+#: src/main.py:1372
+msgid "deixe o adaptador visível para novos controles"
 msgstr ""
 
-#: src/main.py:1384
-msgid "Atualizações"
+#: src/main.py:1377 src/main.py:1383 src/main.py:2610 src/main.py:2691
+#: src/main.py:2716
+msgid "Parear (xow)"
 msgstr ""
 
-#: src/main.py:1385
-msgid "Notas"
+#: src/main.py:1389
+msgid "Conectados"
 msgstr ""
 
-#: src/main.py:1390 src/main.py:2166
-msgid "Verificar"
+#: src/main.py:1390
+msgid "—"
+msgstr ""
+
+#: src/main.py:1394 src/main.py:1400
+msgid "Desligar todos"
 msgstr ""
 
 #: src/main.py:1401
-msgid "Remapeamento de botões"
+msgid "desliga todos os clientes wireless do dongle"
 msgstr ""
 
-#: src/main.py:1403 src/main.py:1415 src/main.py:2139
-msgid "Abrir"
+#: src/main.py:1407
+msgid "Acordar o PC"
 msgstr ""
 
-#: src/main.py:1414
-msgid "kernel, driver, firmware, permissões, evdev e áudio"
+#: src/main.py:1408
+msgid "habilita wakeup no adaptador USB (xone)"
 msgstr ""
 
-#: src/main.py:1424
-msgid "Serviço xow"
+#: src/main.py:1415
+msgid "Seus controles"
 msgstr ""
 
-#: src/main.py:1427
-msgid "Iniciar"
+#: src/main.py:1416
+msgid "Conectados ao adaptador • expanda para ajustes"
 msgstr ""
 
-#: src/main.py:1428
-msgid "Parar"
+#: src/main.py:1419
+msgid "Nenhum controle conectado"
 msgstr ""
 
-#: src/main.py:1429
-msgid "Logs"
+#: src/main.py:1420
+msgid "Ative o pairing e segure o botão Xbox até piscar rápido."
 msgstr ""
 
-#: src/main.py:1443
-msgid "Notificações"
+#: src/main.py:1421
+msgid ""
+"1. Ative o pareamento\n"
+"2. Segure o botão Xbox até o LED piscar rápido"
 msgstr ""
 
-#: src/main.py:1443
-msgid "conexão, desconexão e bateria baixa"
+#: src/main.py:1425
+msgid "Conectar um controle"
 msgstr ""
 
-#: src/main.py:1449
-msgid "Verificar atualizações"
+#: src/main.py:1452 src/main.py:1716
+msgid "Áudio"
 msgstr ""
 
-#: src/main.py:1450
-msgid "consulta releases no GitHub ao abrir"
+#: src/main.py:1453
+msgid "Headset e roteamento via PipeWire/PulseAudio"
 msgstr ""
 
-#: src/main.py:1456
-msgid "Nunca"
+#: src/main.py:1455
+msgid "Áudio do Xbox"
 msgstr ""
 
-#: src/main.py:1456
-msgid "30 segundos"
+#: src/main.py:1455
+msgid "verificando…"
 msgstr ""
 
-#: src/main.py:1456
-msgid "60 segundos"
+#: src/main.py:1469
+msgid "Controles Xbox pareados via BlueZ (xpadneo)"
 msgstr ""
 
-#: src/main.py:1456
-msgid "120 segundos"
+#: src/main.py:1471 src/main.py:2278
+msgid "Controles pareados"
 msgstr ""
 
-#: src/main.py:1462
-msgid "Desligar pairing automaticamente"
-msgstr ""
-
-#: src/main.py:1463
-msgid "evita deixar o dongle pareável para sempre"
+#: src/main.py:1472
+msgid "procure controles já pareados ou escaneie"
 msgstr ""
 
 #: src/main.py:1473
-msgid "Intervalo de atualização"
-msgstr ""
-
-#: src/main.py:1474
-msgid "segundos entre atualizações automáticas"
+msgid "Buscar"
 msgstr ""
 
 #: src/main.py:1484
-msgid "Aviso de bateria baixa"
+msgid "Sistema"
 msgstr ""
 
-#: src/main.py:1485
+#: src/main.py:1485 src/main.py:1842 src/main.py:2478
+msgid "Firmware"
+msgstr ""
+
+#: src/main.py:1490 src/main.py:2452
+msgid "Instalar"
+msgstr ""
+
+#: src/main.py:1493
+msgid "Roda o script oficial com pkexec"
+msgstr ""
+
+#: src/main.py:1496
+msgid "Copiar comando de firmware (xone/xow)"
+msgstr ""
+
+#: src/main.py:1515
+msgid "Duração"
+msgstr ""
+
+#: src/main.py:1516
+msgid "milissegundos por teste"
+msgstr ""
+
+#: src/main.py:1528
+msgid "Intensidade"
+msgstr ""
+
+#: src/main.py:1529
+msgid "vale para os dois motores"
+msgstr ""
+
+#: src/main.py:1541
+msgid "Motor fraco"
+msgstr ""
+
+#: src/main.py:1542
+msgid "intensidade independente do motor fraco"
+msgstr ""
+
+#: src/main.py:1548 src/main.py:2510
+msgid "Permissões"
+msgstr ""
+
+#: src/main.py:1553
+msgid "Ajustar"
+msgstr ""
+
+#: src/main.py:1557
+msgid "Instala a regra udev e ajusta o grupo xboxwireless"
+msgstr ""
+
+#: src/main.py:1565
+msgid "Testar todos"
+msgstr ""
+
+#: src/main.py:1570
+msgid "envia rumble a todos os gamepads Xbox"
+msgstr ""
+
+#: src/main.py:1575 src/main.py:1605 src/main.py:1617 src/main.py:2551
+msgid "Abrir"
+msgstr ""
+
+#: src/main.py:1580
+msgid "desenho do controle com resposta ao vivo"
+msgstr ""
+
+#: src/main.py:1586
+msgid "Atualizações"
+msgstr ""
+
+#: src/main.py:1587
+msgid "Notas"
+msgstr ""
+
+#: src/main.py:1592 src/main.py:2581
+msgid "Verificar"
+msgstr ""
+
+#: src/main.py:1603
+msgid "Remapear botões"
+msgstr ""
+
+#: src/main.py:1616
+msgid "kernel, driver, firmware, permissões, evdev e áudio"
+msgstr ""
+
+#: src/main.py:1626 src/main.py:2230
+msgid "Serviço xow"
+msgstr ""
+
+#: src/main.py:1629
+msgid "Iniciar"
+msgstr ""
+
+#: src/main.py:1630
+msgid "Parar"
+msgstr ""
+
+#: src/main.py:1631
+msgid "Logs"
+msgstr ""
+
+#: src/main.py:1645
+msgid "Notificações"
+msgstr ""
+
+#: src/main.py:1645
+msgid "conexão, desconexão e bateria baixa"
+msgstr ""
+
+#: src/main.py:1651
+msgid "Atualizações automáticas"
+msgstr ""
+
+#: src/main.py:1652
+msgid "consulta releases no GitHub ao abrir"
+msgstr ""
+
+#: src/main.py:1658
+msgid "Nunca"
+msgstr ""
+
+#: src/main.py:1658
+msgid "30 segundos"
+msgstr ""
+
+#: src/main.py:1658
+msgid "60 segundos"
+msgstr ""
+
+#: src/main.py:1658
+msgid "120 segundos"
+msgstr ""
+
+#: src/main.py:1664
+msgid "Desligar pareamento"
+msgstr ""
+
+#: src/main.py:1665
+msgid "evita deixar o dongle pareável para sempre"
+msgstr ""
+
+#: src/main.py:1675
+msgid "Atualizar a cada"
+msgstr ""
+
+#: src/main.py:1676
+msgid "segundos entre atualizações automáticas"
+msgstr ""
+
+#: src/main.py:1686
+msgid "Aviso de bateria"
+msgstr ""
+
+#: src/main.py:1687
 msgid "percentual para notificar (quando confiável)"
 msgstr ""
 
-#: src/main.py:1490
+#: src/main.py:1692
 msgid "Restaurar padrões"
 msgstr ""
 
-#: src/main.py:1495
-msgid "Preferências"
+#: src/main.py:1697
+msgid "Padrões"
 msgstr ""
 
-#: src/main.py:1495
+#: src/main.py:1697
 msgid "voltar aos valores padrão"
 msgstr ""
 
-#: src/main.py:1573
+#: src/main.py:1712
+msgid "Início"
+msgstr ""
+
+#: src/main.py:1714
+msgid "Controles"
+msgstr ""
+
+#: src/main.py:1718
+msgid "Configurações"
+msgstr ""
+
+#: src/main.py:1795
+msgid "Xbox Wireless"
+msgstr ""
+
+#: src/main.py:1799
+msgid "Seu adaptador, seus controles, no seu ritmo."
+msgstr ""
+
+#: src/main.py:1806
+msgid "Verificando…"
+msgstr ""
+
+#: src/main.py:1821
+msgid "Testar controle"
+msgstr ""
+
+#: src/main.py:1838
+msgid "Controles conectados"
+msgstr ""
+
+#: src/main.py:1840
+msgid "Bateria média"
+msgstr ""
+
+#: src/main.py:1876 src/main.py:1904
+msgid "Pareando…"
+msgstr ""
+
+#: src/main.py:1878
+msgid "O adaptador está visível para novos controles."
+msgstr ""
+
+#: src/main.py:1880
+msgid "Conectado"
+msgstr ""
+
+#: src/main.py:1882
+msgid "Tudo pronto. 1 controle conectado."
+msgstr ""
+
+#: src/main.py:1885
+#, python-brace-format
+msgid "Tudo pronto. {n} controles conectados."
+msgstr ""
+
+#: src/main.py:1888
+msgid "Adaptador pronto. Conecte um controle para começar."
+msgstr ""
+
+#: src/main.py:1890
+msgid "xow ativo"
+msgstr ""
+
+#: src/main.py:1891
+msgid "Driver legado xow em execução."
+msgstr ""
+
+#: src/main.py:1893
+msgid "Serviço parado"
+msgstr ""
+
+#: src/main.py:1894
+msgid "Inicie o serviço xow para conectar."
+msgstr ""
+
+#: src/main.py:1896
+msgid "Driver inativo"
+msgstr ""
+
+#: src/main.py:1898
+msgid "O adaptador foi detectado, mas o driver xone não está ativo."
+msgstr ""
+
+#: src/main.py:1900
+msgid "Adaptador ausente"
+msgstr ""
+
+#: src/main.py:1902
+msgid "Conecte o Xbox Wireless Adapter para começar."
+msgstr ""
+
+#: src/main.py:1909
+msgid "Conecte o adaptador para parear"
+msgstr ""
+
+#: src/main.py:1959
 msgid "copiado para a área de transferência"
 msgstr ""
 
-#: src/main.py:1575
+#: src/main.py:1961
 #, python-brace-format
 msgid "não foi possível copiar: {e}"
 msgstr ""
 
-#: src/main.py:1703
+#: src/main.py:2093
 msgid "preferências restauradas"
 msgstr ""
 
-#: src/main.py:1730
+#: src/main.py:2120
 msgid "todos os controles"
 msgstr ""
 
-#: src/main.py:1738
+#: src/main.py:2128
 #, python-brace-format
 msgid "Desligar {l}?"
 msgstr ""
 
-#: src/main.py:1739
+#: src/main.py:2129
 msgid "O controle só volta ao apertar o botão Xbox. Nenhum dado é apagado."
 msgstr ""
 
-#: src/main.py:1741 src/main.py:1772 src/main.py:2043
+#: src/main.py:2131 src/main.py:2164 src/main.py:2451
 msgid "Cancelar"
 msgstr ""
 
-#: src/main.py:1766
+#: src/main.py:2150
+msgid "Energia"
+msgstr ""
+
+#: src/main.py:2150
+msgid "Falha ao desligar"
+msgstr ""
+
+#: src/main.py:2158
 msgid "Renomear controle"
 msgstr ""
 
-#: src/main.py:1767
+#: src/main.py:2159
 #, python-brace-format
 msgid "O nome fica salvo pelo serial {s}."
 msgstr ""
 
-#: src/main.py:1769
+#: src/main.py:2161
 msgid "Controle"
 msgstr ""
 
-#: src/main.py:1770
+#: src/main.py:2162
 msgid "Ex.: Controle da sala"
 msgstr ""
 
-#: src/main.py:1773
+#: src/main.py:2165
 msgid "Salvar"
 msgstr ""
 
-#: src/main.py:1790
+#: src/main.py:2180
+msgid "Remapeamento"
+msgstr ""
+
+#: src/main.py:2183
 msgid "input-remapper não encontrado — dica copiada"
 msgstr ""
 
-#: src/main.py:1793
+#: src/main.py:2184
+msgid "input-remapper não encontrado"
+msgstr ""
+
+#: src/main.py:2188
 msgid "coletando diagnóstico…"
 msgstr ""
 
-#: src/main.py:1799
+#: src/main.py:2194
 #, python-brace-format
 msgid "falha ao coletar diagnóstico: {e}"
 msgstr ""
 
-#: src/main.py:1809 src/main.py:1810
+#: src/main.py:2204 src/main.py:2205
 msgid "Copiar"
 msgstr ""
 
-#: src/main.py:1829
+#: src/main.py:2224
 msgid "Logs do xow"
 msgstr ""
 
-#: src/main.py:1844
+#: src/main.py:2243
 msgid "ativo"
 msgstr ""
 
-#: src/main.py:1844
+#: src/main.py:2243
 msgid "parado"
 msgstr ""
 
-#: src/main.py:1852
+#: src/main.py:2251
 msgid "xow não instalado"
 msgstr ""
 
-#: src/main.py:1854
+#: src/main.py:2253
 #, python-brace-format
 msgid "serviço {s}"
 msgstr ""
 
-#: src/main.py:1860
+#: src/main.py:2259
 msgid "procurando controles Bluetooth…"
 msgstr ""
 
-#: src/main.py:1873
+#: src/main.py:2272
 #, python-brace-format
 msgid "{n} controle(s) Bluetooth pareado(s)"
 msgstr ""
 
-#: src/main.py:1874
+#: src/main.py:2273
 msgid "nenhum controle Bluetooth pareado"
 msgstr ""
 
-#: src/main.py:1876
+#: src/main.py:2275
 msgid ""
 "Nenhum controle Bluetooth pareado. Pareie pelo bluetoothctl/Configurações."
 msgstr ""
 
-#: src/main.py:1883
+#: src/main.py:2282
 msgid "Pareados no BlueZ"
 msgstr ""
 
-#: src/main.py:1886
+#: src/main.py:2285
 msgid "Conectar"
 msgstr ""
 
-#: src/main.py:1925
+#: src/main.py:2328
 msgid "pactl não encontrado (PipeWire/PulseAudio)"
 msgstr ""
 
-#: src/main.py:1932
+#: src/main.py:2335
 msgid "nenhum áudio Xbox detectado (headset conectado?)"
 msgstr ""
 
-#: src/main.py:1935
+#: src/main.py:2338
 #, python-brace-format
 msgid "{c} card(s), {s} sink(s), {m} source(s)"
 msgstr ""
 
-#: src/main.py:1943
+#: src/main.py:2346
 msgid "Padrão"
 msgstr ""
 
-#: src/main.py:2005
+#: src/main.py:2408
 msgid ""
 "Gerencie o Xbox Wireless Adapter, controles, LED, bateria, áudio e "
 "diagnóstico no Fedora (xone + xow)."
 msgstr ""
 
-#: src/main.py:2021
+#: src/main.py:2424
 #, python-brace-format
 msgid "Comando copiado: {cmd}"
 msgstr ""
 
-#: src/main.py:2023
+#: src/main.py:2426
 #, python-brace-format
 msgid "Copie manualmente: {cmd} ({e})"
 msgstr ""
 
-#: src/main.py:2033
+#: src/main.py:2436
+msgid "Instalado"
+msgstr ""
+
+#: src/main.py:2437
+msgid "Pendente"
+msgstr ""
+
+#: src/main.py:2441
 #, python-brace-format
 msgid "firmware ausente — {d}"
 msgstr ""
 
-#: src/main.py:2040
+#: src/main.py:2448
 msgid "Instalar firmware do dongle?"
 msgstr ""
 
-#: src/main.py:2041
+#: src/main.py:2449
 msgid ""
 "Roda o script oficial com pkexec. O firmware é sujeito aos Termos de Uso da "
 "Microsoft, precisa de internet e pode levar minutos."
 msgstr ""
 
-#: src/main.py:2138
+#: src/main.py:2478
+msgid "Falha no firmware"
+msgstr ""
+
+#: src/main.py:2510
+msgid "Falha nas permissões"
+msgstr ""
+
+#: src/main.py:2550
 #, python-brace-format
 msgid "nova versão disponível: {t}"
 msgstr ""
 
-#: src/main.py:2141
+#: src/main.py:2553
 #, python-brace-format
 msgid "Nova versão {t} disponível"
 msgstr ""
 
-#: src/main.py:2145
+#: src/main.py:2554
+msgid "Atualização disponível"
+msgstr ""
+
+#: src/main.py:2555
+#, python-brace-format
+msgid "Versão {t} publicada no GitHub."
+msgstr ""
+
+#: src/main.py:2560
 msgid "sem notas do release"
 msgstr ""
 
-#: src/main.py:2146
+#: src/main.py:2561
 msgid "Notas da atualização"
 msgstr ""
 
-#: src/main.py:2168
+#: src/main.py:2583
 msgid "você já está na última versão"
 msgstr ""
 
-#: src/main.py:2169
+#: src/main.py:2584
 msgid "Você já está na última versão"
 msgstr ""
 
-#: src/main.py:2171
+#: src/main.py:2586
 msgid "não foi possível verificar atualizações"
 msgstr ""
 
-#: src/main.py:2172
+#: src/main.py:2587
 msgid "Não foi possível verificar atualizações"
 msgstr ""
 
-#: src/main.py:2174
+#: src/main.py:2589
 msgid "nenhum release publicado ainda"
 msgstr ""
 
-#: src/main.py:2175
+#: src/main.py:2590
 msgid "Nenhum release publicado ainda"
 msgstr ""
 
-#: src/main.py:2200 src/main.py:2202
+#: src/main.py:2615 src/main.py:2617
 #, python-brace-format
 msgid "Pareando… {n}s"
 msgstr ""
 
-#: src/main.py:2239
+#: src/main.py:2654
 msgid "Driver xone • dongle conectado"
 msgstr ""
 
-#: src/main.py:2248
+#: src/main.py:2663
 #, python-brace-format
 msgid "{d} • pairing=ON (desde {h}){v}"
 msgstr ""
 
-#: src/main.py:2255
+#: src/main.py:2670
 #, python-brace-format
 msgid "{d} • pairing=OFF{v}"
 msgstr ""
 
-#: src/main.py:2268
+#: src/main.py:2683
 msgid "Driver xow (serviço parado)"
 msgstr ""
 
-#: src/main.py:2269
+#: src/main.py:2684
 msgid "Driver xow (legado)"
 msgstr ""
 
-#: src/main.py:2272
+#: src/main.py:2687
 #, python-brace-format
 msgid "xow em pairing ({n}s restantes)"
 msgstr ""
 
-#: src/main.py:2275
+#: src/main.py:2690
 #, python-brace-format
 msgid "serviço ativo: {s}"
 msgstr ""
 
-#: src/main.py:2283
+#: src/main.py:2699
 msgid "Serviço xow está parado"
 msgstr ""
 
-#: src/main.py:2284
+#: src/main.py:2701
+msgid "Inicie o serviço para voltar a conectar controles."
+msgstr ""
+
+#: src/main.py:2702
 msgid "Iniciar xow"
 msgstr ""
 
-#: src/main.py:2291
+#: src/main.py:2709
 msgid "Dongle detectado — driver xone inativo"
 msgstr ""
 
-#: src/main.py:2292
+#: src/main.py:2710
 msgid "Nenhum dongle detectado"
 msgstr ""
 
-#: src/main.py:2295
+#: src/main.py:2713
 msgid "plugue o adaptador 045e:02e6/02d1"
 msgstr ""
 
-#: src/main.py:2302
+#: src/main.py:2721
 msgid "Dongle USB sem driver xone"
 msgstr ""
 
-#: src/main.py:2303
+#: src/main.py:2722
 msgid "Adaptador não encontrado"
 msgstr ""
 
-#: src/main.py:2305
+#: src/main.py:2725
+msgid "Conecte o adaptador Xbox Wireless para começar."
+msgstr ""
+
+#: src/main.py:2727
 msgid "Copiar comando"
 msgstr ""
 
-#: src/main.py:2315
+#: src/main.py:2737
 #, python-brace-format
 msgid "{n} cliente(s) • slots {s}"
 msgstr ""
 
-#: src/main.py:2371 src/backend/background.py:90
+#: src/main.py:2794 src/backend/background.py:90
 msgid "Controle conectado"
 msgstr ""
 
-#: src/main.py:2374 src/backend/background.py:92
+#: src/main.py:2797 src/backend/background.py:92
 msgid "Controle desconectado"
 msgstr ""
 
-#: src/main.py:2392 src/backend/background.py:108
+#: src/main.py:2815 src/backend/background.py:108
 msgid "Bateria baixa"
 msgstr ""
 
-#: src/main.py:2393 src/backend/background.py:109
+#: src/main.py:2816 src/backend/background.py:109
 #, python-brace-format
 msgid "{d}: {l}"
 msgstr ""
 
-#: src/main.py:2509
+#: src/main.py:2933
 #, python-brace-format
 msgid "Controle {n}"
 msgstr ""
 
-#: src/main.py:2510
+#: src/main.py:2934
 #, python-brace-format
 msgid "{cid} • mode={m} brilho={b}/{mx}"
 msgstr ""
 
-#: src/main.py:2529
+#: src/main.py:2953
 msgid " (virtual)"
 msgstr ""
 
-#: src/main.py:2620
+#: src/main.py:3044
 msgid "Sem dados de bateria"
 msgstr ""
 
-#: src/main.py:2621
+#: src/main.py:3045
 msgid "UPower não reportou nenhum controle"
 msgstr ""
 
-#: src/main.py:2666
+#: src/main.py:3074
+msgid "Pareamento"
+msgstr ""
+
+#: src/main.py:3074
+msgid "Falha no pareamento"
+msgstr ""
+
+#: src/main.py:3093
 msgid " • ligue o controle agora"
 msgstr ""
 
-#: src/main.py:2670
+#: src/main.py:3097
 msgid "Sem driver para parear"
 msgstr ""
 
-#: src/main.py:2683 src/main.py:2706
+#: src/main.py:3110 src/main.py:3133
 msgid "Nenhum gamepad evdev encontrado"
 msgstr ""
 
-#: src/main.py:2832
+#: src/main.py:3259
 msgid "xow não desliga o pairing manualmente (o serviço encerra sozinho)"
 msgstr ""
 
-#: src/main.py:2837
+#: src/main.py:3264
 msgid "sem driver para parear"
 msgstr ""
 
