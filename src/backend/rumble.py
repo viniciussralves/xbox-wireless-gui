@@ -26,12 +26,17 @@ def find_gamepads() -> list[dict]:
             continue
         try:
             name = d.name or ""
+            if "headset" in name.lower():
+                continue
             if not any(k in name.lower() for k in
-                       ("xbox", "x-box", "microsoft", "gip", "gamepad", "controller")):
+                       ("xbox", "x-box", "microsoft", "gip", "gamepad",
+                        "controller", "joystick", "guitar", "drum",
+                        "wheel", "adaptive", "xinput")):
                 continue
             caps = d.capabilities()
             out.append({"path": path, "name": name,
                         "phys": getattr(d, "phys", "") or "",
+                        "uniq": getattr(d, "uniq", "") or "",
                         "has_rumble": 0x15 in caps or any("FF_" in str(c) for c in caps)})
         except OSError:
             continue
@@ -71,3 +76,14 @@ def rumble(path: str, duration_ms: int = 600, strong: int = 0x8000, weak: int = 
         return False, _("sem permissão em {path} (regra udev/uaccess ou grupo xboxwireless)").format(path=path)
     except Exception as e:  # noqa: BLE001
         return False, str(e)
+
+
+def rumble_motor(path: str, motor: str = "both", duration_ms: int = 600,
+                 magnitude: int = 0x8000) -> tuple[bool, str]:
+    """Testa um motor isolado: 'strong', 'weak' ou 'both'."""
+    mag = max(0, min(0xFFFF, int(magnitude)))
+    if motor == "strong":
+        return rumble(path, duration_ms=duration_ms, strong=mag, weak=0)
+    if motor == "weak":
+        return rumble(path, duration_ms=duration_ms, strong=0, weak=mag)
+    return rumble(path, duration_ms=duration_ms, strong=mag, weak=mag)

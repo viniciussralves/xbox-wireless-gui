@@ -1,4 +1,4 @@
-.TH XBOX-WIRELESS-GUI 1 "October 2026" "0.1.0" "User Commands"
+.TH XBOX-WIRELESS-GUI 1 "November 2026" "0.2.0" "User Commands"
 .SH NAME
 xbox-wireless-gui \- manage the Xbox Wireless Adapter and controllers on Linux
 .SH SYNOPSIS
@@ -13,12 +13,37 @@ with automatic detection of the
 (legacy) drivers.
 .PP
 It enables/disables pairing, lists controllers with UPower battery status,
-adjusts the guide-button LED, tests force-feedback rumble and includes a
-live button tester.
+adjusts the guide-button LED, powers controllers off, tests each rumble
+motor, manages xone audio/headsets, pairs Bluetooth controllers and includes
+a live button tester plus a copyable diagnostic report.
 .SH OPTIONS
+.TP
+.B \-\-version
+Print the application version.
+.TP
+.B \-\-status [\-\-json]
+Print driver, dongle, pairing, controllers and battery status without opening
+the GUI.
+.TP
+.B \-\-diagnose
+Print a Markdown diagnostic report (kernel, driver, firmware, udev, evdev,
+UPower and audio).
+.TP
+.B \-\-pair on|off
+Enable or disable wireless pairing (xone) or request xow pairing.
+.TP
+.B \-\-poweroff [0-15|-1]
+Power off one wireless client or all clients.
+.TP
+.B \-\-led ID MODE BRIGHTNESS
+Set the guide-button LED (xone).
+.PP
 Standard GTK/GApplication options, e.g.
 .BR \-h ", " \-\-help .
 .SH FILES
+.TP
+.I ~/.config/xbox-wireless-gui/profiles.json
+per-controller names and saved LED profiles.
 .TP
 .I /sys/bus/usb/drivers/xone-dongle/*/pairing
 pairing switch of the xone dongle (root or the xboxwireless group with the shipped udev rule)

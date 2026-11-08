@@ -35,5 +35,28 @@
       <summary>Verificar atualizações</summary>
       <description>Verifica novos releases no GitHub ao abrir o app.</description>
     </key>
+    <key name="notifications" type="b">
+      <default>true</default>
+      <summary>Notificações</summary>
+      <description>Mostra notificações de conexão, desconexão e bateria baixa.</description>
+    </key>
+    <key name="pairing-auto-off" type="i">
+      <default>0</default>
+      <range min="0" max="300"/>
+      <summary>Desligar pairing automaticamente</summary>
+      <description>Segundos até desligar o pairing do xone; 0 desativa.</description>
+    </key>
+    <key name="refresh-interval" type="i">
+      <default>15</default>
+      <range min="5" max="120"/>
+      <summary>Intervalo de atualização</summary>
+      <description>Segundos entre atualizações automáticas da janela.</description>
+    </key>
+    <key name="low-battery" type="i">
+      <default>20</default>
+      <range min="5" max="50"/>
+      <summary>Aviso de bateria baixa</summary>
+      <description>Percentual para notificar bateria baixa quando o UPower é confiável.</description>
+    </key>
   </schema>
 </schemalist>

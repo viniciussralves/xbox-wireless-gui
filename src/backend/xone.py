@@ -11,6 +11,7 @@ from backend.i18n import _
 _LED_ID_RE = re.compile(r"^[A-Za-z0-9._:+\-]+$")
 _SYSFS_PAIRING_PREFIX = "/sys/bus/usb/drivers/xone-dongle/"
 _SYSFS_LEDS_PREFIX = "/sys/class/leds/"
+_SYSFS_USB_PREFIX = "/sys/bus/usb/devices/"
 
 # Modos válidos do enum gip_led_mode do xone (driver/common.c e
 # bus/protocol.h): off, on, blink fast/normal/slow, fade slow/fast.
@@ -152,6 +153,132 @@ def list_controllers() -> list[dict]:
                 info[attr] = "?"
         out.append(info)
     return out
+
+
+def active_clients(dongle: str | None = None) -> dict:
+    """Clientes conectados segundo o sysfs do xone."""
+    from backend import detector
+    return detector.dongle_active_clients(dongle)
+
+
+def driver_version() -> str:
+    from backend import detector
+    return detector.module_version("xone_dongle")
+
+
+def _valid_poweroff_file(pf: str | None) -> str | None:
+    if not pf or os.path.basename(pf) != "poweroff":
+        return None
+    if not pf.startswith(_SYSFS_PAIRING_PREFIX):
+        return None
+    if ".." in pf or "//" in pf.replace("://", ""):
+        return None
+    return pf
+
+
+def poweroff(index: int, dongle: str | None = None) -> tuple[bool, str]:
+    """Desliga um controle (0-15) ou todos (-1) pelo sysfs do xone.
+
+    O controle desligado pode ser religado com o botão Xbox; é o
+    equivalente seguro a “desconectar” um cliente wireless.
+    """
+    try:
+        idx = int(index)
+    except (TypeError, ValueError):
+        return False, _("índice {i} inválido").format(i=index)
+    if idx < -1 or idx > 15:
+        return False, _("índice fora da faixa -1..15")
+    base = dongle or (glob.glob("/sys/bus/usb/drivers/xone-dongle/*:*") or [None])[0]
+    if not base:
+        return False, _("dongle xone não encontrado")
+    pf = _valid_poweroff_file(os.path.join(base, "poweroff"))
+    if not pf or not os.path.isfile(pf):
+        return False, _("arquivo poweroff não encontrado")
+    val = str(idx)
+    try:
+        with open(pf, "w") as f:
+            f.write(val + "\n")
+        return True, (_("todos os controles desligados") if idx == -1
+                      else _("controle {i} desligado").format(i=idx))
+    except PermissionError:
+        pass
+    except OSError as e:
+        return False, _("falha ao desligar controle: {e}").format(e=e)
+    r = _run_helper("poweroff", pf, val)
+    if r is not None:
+        if r.returncode == 0:
+            return True, (_("todos os controles desligados") if idx == -1
+                          else _("controle {i} desligado").format(i=idx))
+        return False, _helper_error(r)
+    cmd = f"printf '%s\\n' {shlex.quote(val)} > {shlex.quote(pf)}"
+    try:
+        r = _run_pkexec_shell(cmd)
+        if r.returncode == 0:
+            return True, (_("todos os controles desligados") if idx == -1
+                          else _("controle {i} desligado").format(i=idx))
+        return False, (r.stderr or r.stdout or f"pkexec saiu {r.returncode}").strip()
+    except subprocess.TimeoutExpired:
+        return False, _("timeout no pkexec")
+    except FileNotFoundError:
+        return False, _("pkexec não encontrado")
+
+
+def _wakeup_file() -> str | None:
+    """power/wakeup do dongle Xbox Wireless (usado p/ acordar o PC)."""
+    for d in glob.glob(_SYSFS_USB_PREFIX + "*/idVendor"):
+        base = os.path.dirname(d)
+        try:
+            with open(d) as f:
+                vid = f.read().strip().lower()
+            with open(os.path.join(base, "idProduct")) as f:
+                pid = f.read().strip().lower()
+        except OSError:
+            continue
+        if vid != "045e" or pid not in ("02e6", "02d1", "02f9", "02fe", "091e"):
+            continue
+        cand = os.path.join(base, "power", "wakeup")
+        if os.path.isfile(cand):
+            return cand
+    return None
+
+
+def get_wakeup() -> bool | None:
+    pf = _wakeup_file()
+    if not pf:
+        return None
+    try:
+        with open(pf) as f:
+            return f.read().strip().lower() == "enabled"
+    except OSError:
+        return None
+
+
+def set_wakeup(enable: bool) -> tuple[bool, str]:
+    pf = _wakeup_file()
+    if not pf:
+        return False, _("dongle não encontrado para wakeup")
+    val = "enabled" if enable else "disabled"
+    try:
+        with open(pf, "w") as f:
+            f.write(val + "\n")
+        return True, _("wakeup {v}").format(v=val)
+    except PermissionError:
+        pass
+    except OSError as e:
+        return False, _("falha ao configurar wakeup: {e}").format(e=e)
+    r = _run_helper("wakeup", pf, "on" if enable else "off")
+    if r is not None:
+        if r.returncode == 0:
+            return True, _("wakeup {v}").format(v=val)
+        return False, _helper_error(r)
+    cmd = f"printf '%s\\n' {shlex.quote(val)} > {shlex.quote(pf)}"
+    try:
+        r = _run_pkexec_shell(cmd)
+        if r.returncode == 0:
+            return True, _("wakeup {v}").format(v=val)
+        return False, (r.stderr or r.stdout or f"pkexec saiu {r.returncode}").strip()
+    except Exception as e:  # noqa: BLE001
+        return False, str(e)
 
 
 def set_led(cid: str, mode: str, brightness: str) -> tuple[bool, str]:

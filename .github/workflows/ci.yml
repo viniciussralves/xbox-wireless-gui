@@ -21,11 +21,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libgtk-4-1 gir1.2-gtk-4.0 \
             libadwaita-1-0 gir1.2-adw-1 xvfb desktop-file-utils \
-            appstream gettext python3-cairo
+            appstream gettext python3-cairo shellcheck
       - name: Python deps
         run: pip install evdev coverage ruff
       - name: Lint (erros reais)
-        run: ruff check src tests --select F,E9
+        run: |
+          ruff check src tests --select F,E9
+          shellcheck data/xbox-wireless-gui-helper
+          sh -n data/xbox-wireless-gui-helper
       - name: Compile
         run: python3 -m py_compile src/main.py src/backend/*.py tests/*.py
       - name: Unit tests + coverage (>=95% em src/)

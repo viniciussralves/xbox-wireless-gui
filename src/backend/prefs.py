@@ -15,6 +15,10 @@ DEFAULTS = {
     "tester-deadzone": 0.08,  # 0.0-0.5
     "selected-dongle": "",    # sysfs do dongle preferido ("": automático)
     "check-updates": True,
+    "notifications": True,    # notificações de conexão/bateria
+    "pairing-auto-off": 0,    # segundos; 0 = não desliga sozinho
+    "refresh-interval": 15,   # segundos entre atualizações
+    "low-battery": 20,        # % para aviso (quando confiável)
 }
 
 

@@ -1,0 +1,26 @@
+name: Sugestão
+description: Proponha uma funcionalidade ou melhoria
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema isso resolve?
+      description: Descreva o caso de uso, não só a solução.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Ideia de solução
+  - type: dropdown
+    id: driver
+    attributes:
+      label: Driver/hardware relacionado
+      options:
+        - xone
+        - xow
+        - xpadneo / Bluetooth
+        - áudio/headset
+        - interface/CLI
+        - empacotamento

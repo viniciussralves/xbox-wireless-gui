@@ -1,10 +1,14 @@
 [Desktop Entry]
 Name=Xbox Wireless GUI
-Comment=Gerenciar Xbox Wireless Adapter e controles (xone/xow)
+GenericName=Xbox Wireless Adapter
+Comment=Gerenciar Xbox Wireless Adapter, controles, LED, bateria e áudio (xone/xow)
 Exec=xbox-wireless-gui
 Icon=com.github.xbox-wireless-gui
 Terminal=false
 Type=Application
 Categories=Settings;HardwareSettings;
+Keywords=xbox;controller;gamepad;wireless;adapter;xone;xow;xpadneo;joystick;
 StartupNotify=true
 StartupWMClass=com.github.xbox-wireless-gui
+X-GNOME-UsesNotifications=true
+X-KDE-StartupNotify=true
