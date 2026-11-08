@@ -14,7 +14,7 @@ Empacotamento alvo: **Fedora (RPM/COPR)**.
 ## Estado atual (testado em Fedora 44 KDE)
 - `xone_dongle` + dongle `045e:02e6` detectados, `pairing=0`, controle conectado.
 - GTK4 + Libadwaita + UPowerGlib OK. `python3-evdev`, `evtest` instalados via dnf.
-- Suite com 190+ testes, cobertura de linha ≥95% em `src/`.
+- Suite com 246 testes, cobertura de linha ≥95% em `src/`.
 
 ## Uso (dev)
 ```sh
@@ -37,6 +37,8 @@ python3 src/main.py --diagnose
 python3 src/main.py --pair on
 python3 src/main.py --poweroff 0     # ou -1 para todos
 python3 src/main.py --led gip0.0:white:status 2 30
+python3 src/main.py --background   # serviço de notificações/perfis
+python3 src/main.py --verbose --status
 ```
 
 ## Funcionalidades
@@ -54,6 +56,13 @@ python3 src/main.py --led gip0.0:white:status 2 30
 - **Diagnóstico copiável**: kernel, distro, módulo xone/versão, Secure Boot, dongle, clientes ativos, firmware, udev/grupo, evdev, UPower e áudio.
 - **Notificações** de conexão/desconexão e bateria baixa.
 - **CLI** para Waybar/scripts e **wakeup** do PC pelo controle.
+- **Atualização orientada a eventos**: Gio.FileMonitor em `/dev/input`/LEDs + sinais do UPower, com polling como fallback.
+- **API D-Bus de sessão** (`com.github.xboxwirelessgui.Control1`): status, refresh, present, pairing, LED e poweroff para Waybar/Stream Deck/extensões.
+- **Serviço em segundo plano** (`--background`): notificações e perfis de LED sem a janela aberta.
+- **Histórico de bateria** via `UPower.GetHistory`, com gráfico.
+- **Logging rotativo** em `~/.local/state/xbox-wireless-gui/app.log` e `--verbose`; log recente no diagnóstico.
+- **Acessibilidade**: rótulos em botões de ícone, descrição do testador e atalhos `Ctrl+R`, `Ctrl+D`, `Ctrl+Q`, `F1`.
+- **input-remapper**: botão “Remapeamento de botões” que abre a ferramenta consolidada.
 - Firmware: detecta o binário esperado por driver (`xone_dongle_*.bin`/`xow_dongle.bin`) e instala via script oficial (com disclaimer da MS).
 - Permissões: regra udev + grupo dedicado `xboxwireless` + `uaccess` para evdev; o app **não** adiciona mais o usuário ao grupo `input`.
 - i18n pt-BR + en, verificação de atualizações no GitHub, testes (`python3 -m unittest discover -s tests`; CI exige ≥95%).
@@ -61,7 +70,7 @@ python3 src/main.py --led gip0.0:white:status 2 30
 
 ## Instalar deps (Fedora)
 ```sh
-sudo dnf install -y python3-gobject gtk4 libadwaita gobject-introspection python3-evdev evtest joystick upower polkit bluez pulseaudio-utils
+sudo dnf install -y python3-gobject gtk4 libadwaita gobject-introspection python3-evdev evtest joystick upower polkit bluez pulseaudio-utils libnotify
 sudo dnf install -y python3-coverage  # opcional, para rodar a cobertura
 ```
 
@@ -90,9 +99,35 @@ Depois de instalar o driver, plugue o adaptador e abra o app. O firmware é prop
   precisar desse fluxo.
 - Força de sinal/RSSI e “esquecer” controle pareado não são expostos pelo xone.
 
+## API D-Bus
+
+Com o app aberto (ou ativado pelo D-Bus):
+
+```sh
+busctl --user call com.github.xbox-wireless-gui \
+  /com/github/xboxwirelessgui/Control \
+  com.github.xboxwirelessgui.Control1 GetStatus
+
+busctl --user call com.github.xbox-wireless-gui \
+  /com/github/xboxwirelessgui/Control \
+  com.github.xboxwirelessgui.Control1 SetPairing b true
+```
+
+## Serviço em segundo plano
+
+```sh
+xbox-wireless-gui --background
+systemctl --user enable --now xbox-wireless-gui-background.service
+```
+
+O serviço usa notificações (`notify-send`) e reaplica perfis de LED quando um
+controle reconecta. Ele é opcional; a janela principal continua funcionando
+sozinha.
+
 ## Segurança e permissões
 - O controle de LED/pairing/poweroff usa o grupo `xboxwireless`; o app **não** usa o grupo `input`, que também dá leitura a teclados.
 - O RPM instala um helper root-owned (`/usr/libexec/xbox-wireless-gui-helper`) e usa subcomandos fixos via `pkexec`; o checkout dev usa o caminho de fallback com valores validados.
+- Há também um helper D-Bus root opcional com **ação polkit dedicada** (`com.github.xbox-wireless-gui.helper`); sem ele, o fluxo `pkexec` continua funcionando.
 - Gamepads recebem `TAG+="uaccess"` pela regra udev, liberando evdev para o usuário da sessão sem grupo global.
 - Ainda assim, qualquer regra udev ou operação `pkexec` é privilégio elevado: revise o conteúdo de `data/71-xbox-wireless-gui.rules` antes de instalar em máquinas compartilhadas.
 
@@ -103,6 +138,11 @@ sudo dnf install xbox-wireless-gui
 # ou build local do SRPM via .copr/Makefile
 ```
 - `fedora/xbox-wireless-gui.spec` + AppData + ícone + man + GSettings + regra udev + sysusers + locales.
+- **Debian/Ubuntu**: `debian/` com `dpkg-buildpackage -b -us -uc`.
+- **Arch/AUR**: `packaging/aur/PKGBUILD` (ajuste o `sha256sums` ao publicar a tag).
+- O helper D-Bus dedicado é ativado por D-Bus; se ele não estiver disponível,
+  o app cai no fluxo antigo via `pkexec`. Para habilitar no systemd:
+  `sudo systemctl enable --now com.github.xbox-wireless-gui.helper.service`.
 
 ## Desenvolvimento
 ```sh

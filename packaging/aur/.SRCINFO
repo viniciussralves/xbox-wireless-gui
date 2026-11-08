@@ -1,0 +1,23 @@
+pkgbase = xbox-wireless-gui
+	pkgdesc = GTK4 interface for the Xbox Wireless Adapter (xone/xow)
+	pkgver = 0.3.0
+	pkgrel = 1
+	url = https://github.com/viniciussralves/xbox-wireless-gui
+	arch = any
+	license = GPL-3.0-or-later
+	makedepends = gettext
+	depends = python
+	depends = python-gobject
+	depends = gtk4
+	depends = libadwaita
+	depends = python-evdev
+	depends = upower
+	depends = polkit
+	depends = systemd
+	optdepends = bluez: Bluetooth controller support
+	optdepends = libpulse: pactl audio/headset controls
+	optdepends = evtest: evdev diagnostics
+	source = xbox-wireless-gui-0.3.0.tar.gz::https://github.com/viniciussralves/xbox-wireless-gui/archive/refs/tags/v0.3.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = xbox-wireless-gui

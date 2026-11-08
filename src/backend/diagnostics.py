@@ -10,7 +10,7 @@ import platform
 import subprocess
 
 from backend import __version__, battery, detector, firmware, permissions
-from backend import audio, rumble, xow
+from backend import audio, log, rumble, xow
 
 
 def _read(path: str, default: str = "") -> str:
@@ -178,4 +178,7 @@ def format_markdown(data: dict | None = None) -> str:
     lines.append(f"- cards={aud.get('cards') or []}")
     lines.append(f"- sinks={aud.get('sinks') or []}")
     lines.append(f"- sources={aud.get('sources') or []}")
+    tail = log.tail(40)
+    lines += ["", "### Log recente"]
+    lines.append(tail.strip() if tail.strip() else "- vazio")
     return "\n".join(lines) + "\n"

@@ -64,6 +64,11 @@
     <display_length compare="ge">360</display_length>
   </requires>
   <releases>
+    <release version="0.3.0" date="2026-11-07">
+      <description>
+        <p>Atualização orientada a eventos, helper D-Bus/polkit dedicado, API D-Bus, histórico de bateria, logging/journald, acessibilidade, serviço em segundo plano, integração com input-remapper e empacotamento Debian/AUR.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-07">
       <description>
         <p>Desligar controles (poweroff), bateria por nível/serial, diagnóstico copiável, notificações, pairing com auto-off, áudio/headset xone, perfis de LED, Bluetooth, CLI e preferências novas.</p>

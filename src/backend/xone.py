@@ -6,6 +6,7 @@ import re
 import shlex
 import subprocess
 
+from backend import privclient
 from backend.i18n import _
 
 _LED_ID_RE = re.compile(r"^[A-Za-z0-9._:+\-]+$")
@@ -121,6 +122,9 @@ def set_pairing(enable: bool, dongle: str | None = None) -> tuple[bool, str]:
         pass  # cai para o helper/pkexec abaixo
     except OSError as e:
         return False, _("falha ao escrever pairing: {e}").format(e=e)
+    res = privclient.set_pairing(enable, pf)
+    if res is not None:
+        return res
     r = _run_helper("pairing", "on" if enable else "off", pf)
     if r is not None:
         if r.returncode == 0:
@@ -204,6 +208,9 @@ def poweroff(index: int, dongle: str | None = None) -> tuple[bool, str]:
         pass
     except OSError as e:
         return False, _("falha ao desligar controle: {e}").format(e=e)
+    res = privclient.poweroff(pf, idx)
+    if res is not None:
+        return res
     r = _run_helper("poweroff", pf, val)
     if r is not None:
         if r.returncode == 0:
@@ -266,6 +273,9 @@ def set_wakeup(enable: bool) -> tuple[bool, str]:
         pass
     except OSError as e:
         return False, _("falha ao configurar wakeup: {e}").format(e=e)
+    res = privclient.set_wakeup(pf, enable)
+    if res is not None:
+        return res
     r = _run_helper("wakeup", pf, "on" if enable else "off")
     if r is not None:
         if r.returncode == 0:
@@ -316,6 +326,9 @@ def set_led(cid: str, mode: str, brightness: str) -> tuple[bool, str]:
         pass
     except OSError as e:
         return False, _("falha ao escrever LED: {e}").format(e=e)
+    res = privclient.set_led(cid, mode, str(bval))
+    if res is not None:
+        return res
     r = _run_helper("led", cid, mode, str(bval))
     if r is not None:
         if r.returncode == 0:

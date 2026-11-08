@@ -3,6 +3,7 @@ Name=Xbox Wireless GUI
 GenericName=Xbox Wireless Adapter
 Comment=Gerenciar Xbox Wireless Adapter, controles, LED, bateria e áudio (xone/xow)
 Exec=xbox-wireless-gui
+DBusActivatable=true
 Icon=com.github.xbox-wireless-gui
 Terminal=false
 Type=Application

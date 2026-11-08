@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_build:
+	for po in po/*.po; do \
+		lang=$$(basename $$po .po); \
+		mkdir -p locale/$$lang/LC_MESSAGES; \
+		msgfmt --check $$po -o locale/$$lang/LC_MESSAGES/xbox-wireless-gui.mo; \
+	done
+
+override_dh_auto_clean:
+	rm -rf locale
+	dh_auto_clean
+
+override_dh_auto_install:
+	install -d $(DESTDIR)/usr/bin $(DESTDIR)/usr/share/xbox-wireless-gui
+	install -m755 debian/wrapper $(DESTDIR)/usr/bin/xbox-wireless-gui

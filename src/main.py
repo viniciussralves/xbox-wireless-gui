@@ -17,12 +17,14 @@ from gi.repository import Gtk, Adw, Gio, GLib, Gdk  # noqa: E402
 
 from backend import bluetooth, detector, firmware, permissions, prefs, updates
 from backend import xone, xow, battery, rumble, inputs, audio, diagnostics, profiles
+from backend import api, history, log, monitor, remap
 from backend.rumble import is_virtual_pad
 from backend.xone import VALID_LED_MODES
 from backend import __version__ as APP_VERSION
 from backend.i18n import _
 
 APP_ID = "com.github.xbox-wireless-gui"
+LOG = log.get_logger("main")
 
 
 CSS = b"""
@@ -145,6 +147,14 @@ def led_mode_label(mode: str) -> str:
     }.get(mode, mode)
 
 
+def a11y_label(widget, text: str):
+    """Rótulo acessível para botões só de ícone."""
+    try:
+        widget.update_property([Gtk.AccessibleProperty.LABEL], [text])
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def style_bat_bar(bar: Gtk.LevelBar, pct: int):
     bar.set_value(pct)
     bar.remove_css_class("warn")
@@ -190,6 +200,7 @@ class ControllerCard(Adw.ExpanderRow):
             self.info_row.add_suffix(rename_btn)
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
         copy_btn.set_tooltip_text(_("Copiar informações do controle"))
+        a11y_label(copy_btn, _("Copiar informações do controle"))
         copy_btn.add_css_class("btn-icon")
         copy_btn.set_valign(Gtk.Align.CENTER)
         copy_btn.connect("clicked", self._on_copy_info)
@@ -209,6 +220,14 @@ class ControllerCard(Adw.ExpanderRow):
         bat_box.append(self.bat_icon)
         bat_box.append(self.bat_bar)
         bat_box.append(self.bat_label)
+        self.battery_native = ""
+        hist_btn = Gtk.Button.new_from_icon_name("document-open-recent-symbolic")
+        hist_btn.set_tooltip_text(_("Histórico de bateria"))
+        a11y_label(hist_btn, _("Histórico de bateria"))
+        hist_btn.add_css_class("btn-icon")
+        hist_btn.set_valign(Gtk.Align.CENTER)
+        hist_btn.connect("clicked", self._on_battery_history)
+        bat_box.append(hist_btn)
         self.bat_row = Adw.ActionRow(title=_("Bateria"), subtitle=_("via UPower"))
         self.bat_row.add_suffix(bat_box)
         self.bat_row.set_activatable(False)
@@ -316,6 +335,7 @@ class ControllerCard(Adw.ExpanderRow):
             self.add_row(disc_row)
 
     def set_battery_info(self, b: dict):
+        self.battery_native = (b.get("native_path") or b.get("serial") or "")
         pct = battery_pct(b)
         if pct < 0:
             self.bat_label.set_markup('<b>—</b>')
@@ -412,6 +432,11 @@ class ControllerCard(Adw.ExpanderRow):
             target=lambda: xone.set_led(self.led_id, mode, str(brightness)),
             daemon=True).start()
 
+    def _on_battery_history(self, _b):
+        if self.battery_native:
+            self._win.show_battery_history(self.battery_native,
+                                           self.get_title())
+
     def _on_poweroff(self, _b):
         if self.power_index is not None:
             self._win.poweroff_controller(self.power_index, self.led_id,
@@ -470,10 +495,12 @@ class TesterWindow(Adw.Window):
                                                 subtitle=_("aperte os botões do controle")))
         reload_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
         reload_btn.set_tooltip_text(_("Procurar gamepads novamente"))
+        a11y_label(reload_btn, _("Procurar gamepads novamente"))
         reload_btn.connect("clicked", lambda *_a: self._reload_devices(None))
         header.pack_start(reload_btn)
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
         copy_btn.set_tooltip_text(_("Copiar estado atual"))
+        a11y_label(copy_btn, _("Copiar estado atual"))
         copy_btn.connect("clicked", self._on_copy_state)
         header.pack_end(copy_btn)
 
@@ -494,6 +521,13 @@ class TesterWindow(Adw.Window):
         self.area.set_halign(Gtk.Align.CENTER)
         self.area.set_valign(Gtk.Align.CENTER)
         self.area.set_draw_func(self._draw, None)
+        self.area.set_accessible_role(Gtk.AccessibleRole.IMG)
+        self.area.update_property(
+            [Gtk.AccessibleProperty.LABEL],
+            [_("Desenho do controle Xbox com botões e eixos ao vivo")])
+        self.area.update_property(
+            [Gtk.AccessibleProperty.DESCRIPTION],
+            [_("Use o testador para conferir botões, gatilhos e analógicos")])
 
         self.status_label = Gtk.Label(label=_("Nenhum botão pressionado"))
         self.status_label.add_css_class("dim")
@@ -966,6 +1000,98 @@ class TesterWindow(Adw.Window):
         cr.restore()
 
 
+class BatteryHistoryWindow(Adw.Window):
+    """Gráfico simples do histórico de carga de um controle (UPower)."""
+
+    def __init__(self, parent: Gtk.Window, native_path: str, device: str):
+        super().__init__(transient_for=parent,
+                         title=_("Histórico de bateria"))
+        self.set_default_size(620, 420)
+        self.native_path = native_path
+        self.device = device
+        self.rows = history.get_history(native_path, hours=24)
+        header = Adw.HeaderBar()
+        header.set_title_widget(Adw.WindowTitle(
+            title=_("Histórico de bateria"), subtitle=device))
+        copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.set_tooltip_text(_("Copiar resumo"))
+        copy_btn.connect("clicked", self._on_copy)
+        header.pack_end(copy_btn)
+        self.area = Gtk.DrawingArea()
+        self.area.set_content_width(560)
+        self.area.set_content_height(240)
+        self.area.set_hexpand(True)
+        self.area.set_vexpand(True)
+        self.area.set_draw_func(self._draw, None)
+        self.area.set_accessible_role(Gtk.AccessibleRole.IMG)
+        self.area.update_property(
+            [Gtk.AccessibleProperty.LABEL],
+            [_("Histórico de bateria de {d}").format(d=device)])
+        s = history.summarize(self.rows)
+        self.summary = Gtk.Label()
+        self.summary.set_wrap(True)
+        if s["count"]:
+            self.summary.set_text(
+                _("{n} amostras • mínimo {mn:.0f}% • máximo {mx:.0f}% • "
+                  "último {last:.0f}%").format(
+                      n=s["count"], mn=s["min"], mx=s["max"],
+                      last=s["last"]))
+        else:
+            self.summary.set_text(_("sem histórico do UPower"))
+        self.summary.add_css_class("dim")
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.set_margin_top(12)
+        content.set_margin_bottom(12)
+        content.set_margin_start(12)
+        content.set_margin_end(12)
+        content.append(self.area)
+        content.append(self.summary)
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        body.append(header)
+        body.append(content)
+        self.set_content(body)
+
+    def _on_copy(self, _b):
+        s = history.summarize(self.rows)
+        text = _("{d}: {n} amostras, mínimo {mn}%, máximo {mx}%, último {last}%").format(
+            d=self.device, n=s["count"], mn=s["min"], mx=s["max"],
+            last=s["last"])
+        try:
+            provider = Gdk.ContentProvider.new_for_bytes(
+                "text/plain;charset=utf-8", GLib.Bytes.new(text.encode()))
+            self.get_clipboard().set_content(provider)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _draw(self, _area, cr, w: int, h: int, _data):
+        try:
+            fg = _area.get_style_context().get_color()
+            FR, FG, FB = fg.red, fg.green, fg.blue
+        except Exception:  # noqa: BLE001
+            FR, FG, FB = 0.6, 0.6, 0.6
+        cr.set_source_rgb(FR, FG, FB)
+        cr.set_line_width(1.0)
+        cr.rectangle(24, 16, max(10, w - 48), max(10, h - 48))
+        cr.stroke()
+        if not self.rows:
+            cr.set_font_size(13)
+            cr.move_to(32, h / 2)
+            cr.show_text(_("sem histórico do UPower"))
+            return
+        vals = [max(0.0, min(100.0, r["value"])) for r in self.rows]
+        n = len(vals)
+        cr.set_line_width(2.2)
+        cr.set_source_rgb(0.19, 0.82, 0.35)
+        for i, v in enumerate(vals):
+            x = 24 + (w - 48) * (i / max(1, n - 1))
+            y = h - 24 - (h - 48) * (v / 100.0)
+            if i == 0:
+                cr.move_to(x, y)
+            else:
+                cr.line_to(x, y)
+        cr.stroke()
+
+
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
         super().__init__(application=app, title="Xbox Wireless GUI")
@@ -985,6 +1111,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._pair_auto_id: int | None = None
         self._audio_rows: list[Adw.ActionRow] = []
         self._bt_rows: list[Adw.ActionRow] = []
+        self._fs_monitor = None
+        self._up_monitor = None
+        self._event_refresh_id: int | None = None
 
         css = Gtk.CssProvider()
         css.load_from_data(CSS)
@@ -995,6 +1124,7 @@ class MainWindow(Adw.ApplicationWindow):
         # ---- header ----
         header = Adw.HeaderBar()
         menu = Gtk.MenuButton(icon_name="open-menu-symbolic")
+        a11y_label(menu, _("Menu"))
         pop = Gio.Menu()
         pop.append(_("Diagnóstico"), "app.diagnostics")
         pop.append(_("Sobre"), "app.about")
@@ -1002,6 +1132,7 @@ class MainWindow(Adw.ApplicationWindow):
         header.pack_end(menu)
         self.refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
         self.refresh_btn.set_tooltip_text(_("Atualizar"))
+        a11y_label(self.refresh_btn, _("Atualizar"))
         self.refresh_btn.add_css_class("btn-icon")
         self.refresh_btn.set_valign(Gtk.Align.CENTER)
         self.refresh_btn.connect("clicked", self.on_refresh)
@@ -1012,6 +1143,7 @@ class MainWindow(Adw.ApplicationWindow):
         diag_act = Gio.SimpleAction.new("diagnostics", None)
         diag_act.connect("activate", self._on_diagnostics)
         app.add_action(diag_act)
+        self._install_shortcuts()
 
         # ---- banner status ----
         self.banner = Adw.Banner()
@@ -1264,6 +1396,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.upd_row.set_activatable(False)
         g_sys.add(self.upd_row)
 
+        # Remapeamento via input-remapper (não reimplementamos uinput)
+        self.remap_row = Adw.ActionRow(
+            title=_("Remapeamento de botões"),
+            subtitle=remap.hint())
+        remap_btn = Gtk.Button(label=_("Abrir"))
+        remap_btn.add_css_class("btn-std")
+        remap_btn.set_valign(Gtk.Align.CENTER)
+        remap_btn.connect("clicked", self._on_remap)
+        self.remap_row.add_suffix(remap_btn)
+        self.remap_row.set_activatable(False)
+        g_sys.add(self.remap_row)
+
         # Diagnóstico copiável (suporte)
         self.diag_row = Adw.ActionRow(
             title=_("Diagnóstico"),
@@ -1373,14 +1517,21 @@ class MainWindow(Adw.ApplicationWindow):
         self._auto_refresh_id = None
         GLib.idle_add(self.on_refresh, None)
         self._schedule_auto_refresh()
+        self._start_monitors()
         # verificação de atualização em 2º plano (não trava a UI)
         if self._prefs.get_bool("check-updates"):
             self._update_check_id = GLib.timeout_add_seconds(3, self._auto_update_check)
         self.connect("close-request", self._on_window_close)
 
     def _on_window_close(self, *_args):
+        for obj in (getattr(self, "_fs_monitor", None),
+                    getattr(self, "_up_monitor", None)):
+            try:
+                obj.stop()
+            except Exception:  # noqa: BLE001
+                pass
         for attr in ("_auto_refresh_id", "_update_check_id", "_xow_countdown_id",
-                     "_pair_auto_id"):
+                     "_pair_auto_id", "_event_refresh_id"):
             sid = getattr(self, attr, None)
             if sid is not None:
                 try:
@@ -1395,8 +1546,24 @@ class MainWindow(Adw.ApplicationWindow):
 
     # ---- helpers ----
     def toast(self, msg: str):
-        print(msg)
+        LOG.info(msg)
         self.toasts.add_toast(Adw.Toast.new(msg))
+
+    def _install_shortcuts(self):
+        controller = Gtk.ShortcutController()
+        controller.set_scope(Gtk.ShortcutScope.GLOBAL)
+
+        def add(accel: str, callback):
+            trigger = Gtk.ShortcutTrigger.parse_string(accel)
+            action = Gtk.CallbackAction.new(
+                lambda *_a: (callback(), True)[1])
+            controller.add_shortcut(Gtk.Shortcut.new(trigger, action))
+
+        add("<Control>r", lambda: self.on_refresh())
+        add("<Control>d", lambda: self._on_diagnostics())
+        add("<Control>q", lambda: self.close())
+        add("F1", lambda: self._on_about())
+        self.add_controller(controller)
 
     def copy_text(self, text: str):
         try:
@@ -1450,6 +1617,32 @@ class MainWindow(Adw.ApplicationWindow):
         except Exception:  # noqa: BLE001
             pass
         self._schedule_auto_refresh()
+
+    def _start_monitors(self):
+        try:
+            self._fs_monitor = monitor.FsMonitor(self._queue_event_refresh)
+            self._fs_monitor.start()
+        except Exception:  # noqa: BLE001
+            self._fs_monitor = None
+        try:
+            self._up_monitor = monitor.UPowerMonitor(self._queue_event_refresh)
+            self._up_monitor.start()
+        except Exception:  # noqa: BLE001
+            self._up_monitor = None
+
+    def _queue_event_refresh(self):
+        if self._event_refresh_id is not None:
+            return
+        self._event_refresh_id = GLib.timeout_add(400, self._event_refresh)
+
+    def _event_refresh(self):
+        self._event_refresh_id = None
+        try:
+            if self.get_visible():
+                self.on_refresh()
+        except Exception as e:  # noqa: BLE001
+            LOG.debug("refresh por evento falhou: %s", e)
+        return False
 
     def _pair_auto_index(self) -> int:
         val = self._prefs.get_int("pairing-auto-off")
@@ -1588,6 +1781,14 @@ class MainWindow(Adw.ApplicationWindow):
         dlg.present(self)
 
     # ---- diagnóstico / logs ----
+    def _on_remap(self, _b):
+        ok, msg = remap.open_tool()
+        if ok:
+            self.toast(msg)
+            return
+        self.copy_text(remap.hint())
+        self.toast(_("input-remapper não encontrado — dica copiada"))
+
     def _on_diagnostics(self, *_args):
         self.toast(_("coletando diagnóstico…"))
 
@@ -1606,6 +1807,7 @@ class MainWindow(Adw.ApplicationWindow):
         header = Adw.HeaderBar()
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
         copy_btn.set_tooltip_text(_("Copiar"))
+        a11y_label(copy_btn, _("Copiar"))
         copy_btn.connect("clicked", lambda _b: self.copy_text(text))
         header.pack_end(copy_btn)
         view = Gtk.TextView()
@@ -2388,6 +2590,16 @@ class MainWindow(Adw.ApplicationWindow):
             suffix = Gtk.Box(spacing=10)
             suffix.append(bar)
             suffix.append(pct_lbl)
+            hist = Gtk.Button.new_from_icon_name("document-open-recent-symbolic")
+            hist.set_tooltip_text(_("Histórico de bateria"))
+            a11y_label(hist, _("Histórico de bateria"))
+            hist.add_css_class("btn-icon")
+            hist.set_valign(Gtk.Align.CENTER)
+            native = b.get("native_path") or b.get("serial") or ""
+            hist.connect("clicked", lambda _btn, np=native,
+                         dev=b.get("device", "?"):
+                         self.show_battery_history(np, dev))
+            suffix.append(hist)
             detail = bat_time_text(b)
             state = b.get("state", "")
             lvl = b.get("level", "?")
@@ -2515,6 +2727,34 @@ class MainWindow(Adw.ApplicationWindow):
             pad_path = (real or pads)[0]["path"] if (real or pads) else None
         TesterWindow(self, initial_path=pad_path).present()
 
+    def show_battery_history(self, native_path: str, device: str):
+        BatteryHistoryWindow(self, native_path, device).present()
+
+
+def _clients_json(dongle: str | None) -> dict:
+    data = xone.active_clients(dongle)
+    if not isinstance(data, dict):
+        return {"count": 0, "slots": [], "all_slots": []}
+    return {"count": data.get("count", 0),
+            "slots": sorted(data.get("slots") or []),
+            "all_slots": sorted(data.get("all_slots") or [])}
+
+
+def _api_status() -> dict:
+    """Status rápido para D-Bus (sem UPower/evdev bloqueantes)."""
+    info = detector.detect()
+    return {
+        "app_version": APP_VERSION,
+        "driver": info.name,
+        "state": info.state,
+        "detail": info.detail,
+        "dongle": info.dongle_sysfs,
+        "xone_version": info.xone_version,
+        "pairing": xone.get_pairing(info.dongle_sysfs),
+        "controllers": xone.list_controllers(),
+        "active_clients": _clients_json(info.dongle_sysfs),
+    }
+
 
 def _status_dict() -> dict:
     info = detector.detect()
@@ -2528,7 +2768,7 @@ def _status_dict() -> dict:
         "pairing": xone.get_pairing(info.dongle_sysfs),
         "controllers": xone.list_controllers(),
         "batteries": battery.list_batteries(),
-        "active_clients": xone.active_clients(info.dongle_sysfs),
+        "active_clients": _clients_json(info.dongle_sysfs),
     }
 
 
@@ -2540,6 +2780,8 @@ def _cli(argv: list[str]) -> int | None:
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--diagnose", action="store_true")
     parser.add_argument("--version", action="store_true")
+    parser.add_argument("--background", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--pair", choices=("on", "off"))
     parser.add_argument("--poweroff", nargs="?", const="-1")
@@ -2552,9 +2794,13 @@ def _cli(argv: list[str]) -> int | None:
     if ns.help:
         parser.print_help()
         return 0
+    log.setup(verbose=bool(ns.verbose))
     if ns.version:
         print(f"xbox-wireless-gui {APP_VERSION}")
         return 0
+    if ns.background:
+        from backend import background
+        return background.main()
     if ns.status:
         data = _status_dict()
         if ns.json:
@@ -2608,6 +2854,36 @@ class App(Adw.Application):
         GLib.set_application_name("Xbox Wireless GUI")
         super().__init__(application_id=APP_ID,
                          flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        self._api = None
+
+    def _register_api(self):
+        if self._api is not None:
+            return
+        try:
+            conn = self.get_dbus_connection()
+            if conn is None:
+                conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            if conn is None:
+                return
+
+            def dongle():
+                win = getattr(self, "_main_window", None)
+                if win is not None:
+                    return win._selected_dongle()
+                return detector.detect().dongle_sysfs
+
+            self._api = api.register(conn, {
+                "status": _api_status,
+                "refresh": lambda: getattr(self, "_main_window", None)
+                and self._main_window.on_refresh(),
+                "present": self.do_activate,
+                "pairing": lambda enabled: xone.set_pairing(enabled, dongle()),
+                "led": lambda cid, mode, val: xone.set_led(cid, mode, val),
+                "poweroff": lambda index: xone.poweroff(index, dongle()),
+            })
+            LOG.info("API D-Bus registrada em %s", api.OBJECT_PATH)
+        except Exception as e:  # noqa: BLE001
+            LOG.debug("API D-Bus indisponível: %s", e)
 
     def do_activate(self):
         win = getattr(self, "_main_window", None)
@@ -2615,6 +2891,7 @@ class App(Adw.Application):
             win = MainWindow(self)
             self._main_window = win
         win.present()
+        self._register_api()
 
 
 def main() -> int:

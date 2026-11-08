@@ -1,0 +1,13 @@
+[Unit]
+Description=Xbox Wireless GUI background notifications/LED profiles
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/xbox-wireless-gui --background
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

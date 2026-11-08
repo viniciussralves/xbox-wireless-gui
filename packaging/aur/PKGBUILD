@@ -1,0 +1,58 @@
+# Maintainer: theone <viniciussralves92@gmail.com>
+pkgname=xbox-wireless-gui
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="GTK4 interface for the Xbox Wireless Adapter (xone/xow)"
+arch=('any')
+url="https://github.com/viniciussralves/xbox-wireless-gui"
+license=('GPL-3.0-or-later')
+depends=('python' 'python-gobject' 'gtk4' 'libadwaita' 'python-evdev'
+         'upower' 'polkit' 'systemd')
+makedepends=('gettext')
+optdepends=(
+  'bluez: Bluetooth controller support'
+  'libpulse: pactl audio/headset controls'
+  'evtest: evdev diagnostics'
+)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+# Substitua SKIP pelo sha256 do tarball ao publicar a tag.
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  for po in po/*.po; do
+    lang=$(basename "$po" .po)
+    mkdir -p "locale/$lang/LC_MESSAGES"
+    msgfmt --check "$po" -o "locale/$lang/LC_MESSAGES/xbox-wireless-gui.mo"
+  done
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -d "$pkgdir/usr/bin" "$pkgdir/usr/share/xbox-wireless-gui"
+  install -Dm644 src/main.py "$pkgdir/usr/share/xbox-wireless-gui/main.py"
+  install -d "$pkgdir/usr/share/xbox-wireless-gui/backend"
+  install -m644 src/backend/*.py "$pkgdir/usr/share/xbox-wireless-gui/backend/"
+  install -Dm644 src/backend/privhelper.py "$pkgdir/usr/share/xbox-wireless-gui/"
+  install -Dm755 data/xbox-wireless-gui-helper "$pkgdir/usr/libexec/xbox-wireless-gui-helper"
+  printf '#!/bin/sh\nexec python3 /usr/share/xbox-wireless-gui/main.py "$@"\n' \
+    > "$pkgdir/usr/bin/xbox-wireless-gui"
+  chmod 755 "$pkgdir/usr/bin/xbox-wireless-gui"
+
+  install -Dm644 data/71-xbox-wireless-gui.rules "$pkgdir/usr/lib/udev/rules.d/71-xbox-wireless-gui.rules"
+  install -Dm644 data/71-xbox-wireless-gui.rules "$pkgdir/usr/share/xbox-wireless-gui/71-xbox-wireless-gui.rules"
+  install -Dm644 data/com.github.xbox-wireless-gui.desktop "$pkgdir/usr/share/applications/com.github.xbox-wireless-gui.desktop"
+  install -Dm644 data/com.github.xbox-wireless-gui.policy "$pkgdir/usr/share/polkit-1/actions/com.github.xbox-wireless-gui.policy"
+  install -Dm644 data/com.github.xbox-wireless-gui.gschema.xml "$pkgdir/usr/share/glib-2.0/schemas/com.github.xbox-wireless-gui.gschema.xml"
+  install -Dm644 data/com.github.xbox-wireless-gui.metainfo.xml "$pkgdir/usr/share/metainfo/com.github.xbox-wireless-gui.metainfo.xml"
+  install -Dm644 data/icons/hicolor/scalable/apps/com.github.xbox-wireless-gui.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/com.github.xbox-wireless-gui.svg"
+  install -Dm644 data/xbox-wireless-gui.1 "$pkgdir/usr/share/man/man1/xbox-wireless-gui.1"
+  install -Dm644 data/xbox-wireless-gui.conf "$pkgdir/usr/lib/sysusers.d/xbox-wireless-gui.conf"
+  install -Dm644 data/com.github.xbox-wireless-gui.helper.service "$pkgdir/usr/lib/systemd/system/com.github.xbox-wireless-gui.helper.service"
+  install -Dm644 data/xbox-wireless-gui-background.service "$pkgdir/usr/lib/systemd/user/xbox-wireless-gui-background.service"
+  install -Dm644 data/com.github.xbox-wireless-gui.Helper.conf "$pkgdir/usr/share/dbus-1/system.d/com.github.xbox-wireless-gui.Helper.conf"
+  install -Dm644 data/com.github.xbox-wireless-gui.service "$pkgdir/usr/share/dbus-1/services/com.github.xbox-wireless-gui.service"
+  install -d "$pkgdir/usr/share/xbox-wireless-gui/screenshots"
+  install -m644 data/screenshots/*.png "$pkgdir/usr/share/xbox-wireless-gui/screenshots/"
+  cp -a locale "$pkgdir/usr/share/"
+}

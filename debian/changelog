@@ -1,0 +1,7 @@
+xbox-wireless-gui (0.3.0) unstable; urgency=medium
+
+  * Event-driven refresh, dedicated D-Bus/polkit helper and D-Bus API.
+  * Battery history, logging/journald, accessibility, background service.
+  * input-remapper integration and Debian packaging.
+
+ -- theone <viniciussralves92@gmail.com>  Sat, 07 Nov 2026 23:00:00 -0300

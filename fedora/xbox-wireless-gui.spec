@@ -1,5 +1,5 @@
 Name:           xbox-wireless-gui
-Version:        0.2.0
+Version:        0.3.0
 Release:        1%{?dist}
 Summary:        Interface GTK para Xbox Wireless Adapter (xone/xow)
 License:        GPL-3.0-or-later
@@ -52,6 +52,9 @@ mkdir -p %{buildroot}%{_datadir}/metainfo
 mkdir -p %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
 mkdir -p %{buildroot}%{_mandir}/man1
 mkdir -p %{buildroot}%{_datadir}/locale
+mkdir -p %{buildroot}%{_unitdir} %{buildroot}%{_userunitdir}
+mkdir -p %{buildroot}%{_datadir}/dbus-1/system.d
+mkdir -p %{buildroot}%{_datadir}/dbus-1/services
 # wrapper que encontra o backend em /usr/share + checkout dev
 cat > %{buildroot}%{_bindir}/xbox-wireless-gui <<'EOF'
 #!/bin/sh
@@ -65,7 +68,12 @@ install -m644 src/main.py %{buildroot}%{_datadir}/xbox-wireless-gui/main.py
 install -m644 src/backend/*.py %{buildroot}%{_datadir}/xbox-wireless-gui/backend/
 install -m644 data/screenshots/*.png %{buildroot}%{_datadir}/xbox-wireless-gui/screenshots/
 install -m755 data/xbox-wireless-gui-helper %{buildroot}%{_libexecdir}/xbox-wireless-gui-helper
+install -m644 src/backend/privhelper.py %{buildroot}%{_datadir}/xbox-wireless-gui/privhelper.py
 install -m644 data/71-xbox-wireless-gui.rules %{buildroot}%{_datadir}/xbox-wireless-gui/
+install -m644 data/com.github.xbox-wireless-gui.helper.service %{buildroot}%{_unitdir}/
+install -m644 data/xbox-wireless-gui-background.service %{buildroot}%{_userunitdir}/
+install -m644 data/com.github.xbox-wireless-gui.Helper.conf %{buildroot}%{_datadir}/dbus-1/system.d/
+install -m644 data/com.github.xbox-wireless-gui.service %{buildroot}%{_datadir}/dbus-1/services/
 install -m644 data/com.github.xbox-wireless-gui.desktop %{buildroot}%{_datadir}/applications/
 install -m644 data/com.github.xbox-wireless-gui.policy %{buildroot}%{_datadir}/polkit-1/actions/
 install -m644 data/com.github.xbox-wireless-gui.gschema.xml %{buildroot}%{_datadir}/glib-2.0/schemas/
@@ -91,22 +99,29 @@ glib-compile-schemas %{_datadir}/glib-2.0/schemas &>/dev/null || :
 udevadm control --reload-rules &>/dev/null || :
 udevadm trigger --action=add --subsystem-match=leds &>/dev/null || :
 udevadm trigger --action=add --subsystem-match=input &>/dev/null || :
-chgrp xboxwireless /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || :
-chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode /sys/bus/usb/drivers/xone-dongle/*/pairing 2>/dev/null || :
+systemctl daemon-reload &>/dev/null || :
+chgrp xboxwireless /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode /sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null || :
+chmod g+w /sys/class/leds/gip*/brightness /sys/class/leds/gip*/mode /sys/bus/usb/drivers/xone-dongle/*/pairing /sys/bus/usb/drivers/xone-dongle/*/poweroff 2>/dev/null || :
 
 %postun
 glib-compile-schemas %{_datadir}/glib-2.0/schemas &>/dev/null || :
 udevadm control --reload-rules &>/dev/null || :
+systemctl daemon-reload &>/dev/null || :
 
 %files
 %license LICENSE
-%doc README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
+%doc README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md packaging/README.md
 %{_bindir}/xbox-wireless-gui
 %{_libexecdir}/xbox-wireless-gui-helper
 %{_datadir}/xbox-wireless-gui/main.py
+%{_datadir}/xbox-wireless-gui/privhelper.py
 %{_datadir}/xbox-wireless-gui/backend/*.py
 %{_datadir}/xbox-wireless-gui/screenshots/*.png
 %{_datadir}/xbox-wireless-gui/71-xbox-wireless-gui.rules
+%{_unitdir}/com.github.xbox-wireless-gui.helper.service
+%{_userunitdir}/xbox-wireless-gui-background.service
+%{_datadir}/dbus-1/system.d/com.github.xbox-wireless-gui.Helper.conf
+%{_datadir}/dbus-1/services/com.github.xbox-wireless-gui.service
 %{_datadir}/applications/com.github.xbox-wireless-gui.desktop
 %{_datadir}/polkit-1/actions/com.github.xbox-wireless-gui.policy
 %{_datadir}/metainfo/com.github.xbox-wireless-gui.metainfo.xml
@@ -118,6 +133,10 @@ udevadm control --reload-rules &>/dev/null || :
 %{_datadir}/locale/*/LC_MESSAGES/xbox-wireless-gui.mo
 
 %changelog
+* Sat Nov 07 2026 theone <viniciussralves92@gmail.com> - 0.3.0-1
+- Atualização por eventos, helper D-Bus/polkit dedicado, API D-Bus,
+  histórico de bateria, logging/journald, acessibilidade, background
+  service, input-remapper e empacotamento Debian/AUR
 * Sat Nov 07 2026 theone <viniciussralves92@gmail.com> - 0.2.0-1
 - Poweroff de controles, bateria por nível/serial, diagnóstico copiável,
   notificações, pairing auto-off, áudio/headset xone, perfis de LED,
