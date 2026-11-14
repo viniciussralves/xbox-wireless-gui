@@ -100,10 +100,41 @@ levelbar.crit block.filled { background: @error_bg_color; }
 .notification-bar.err { border-left: 4px solid @error_color; }
 .notification-title { font-weight: 700; }
 .notification-detail { font-size: 9.5pt; opacity: .78; }
+.panel {
+    background: alpha(@card_bg_color, 0.65);
+    border: 1px solid alpha(@borders, 0.55);
+    border-radius: 16px;
+    padding: 14px;
+}
 """
 
 # Escala única de fontes da interface: cada papel, um tamanho.
 UI_FONT_CANVAS = 12      # todos os rótulos do desenho do controle
+WINDOW_MARGIN = 18       # respiro externo padrão de janelas e páginas
+WINDOW_SPACING = 12      # espaçamento vertical padrão
+CONTENT_WIDTH = 860      # largura máxima do conteúdo principal
+
+
+def window_header(title: str, subtitle: str = "") -> Adw.HeaderBar:
+    header = Adw.HeaderBar()
+    header.set_title_widget(Adw.WindowTitle(title=title, subtitle=subtitle))
+    return header
+
+
+def content_clamp(child: Gtk.Widget, width: int = 760,
+                  margin: int = WINDOW_MARGIN) -> Adw.Clamp:
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                  spacing=WINDOW_SPACING)
+    box.set_margin_top(margin)
+    box.set_margin_bottom(margin)
+    box.set_margin_start(margin)
+    box.set_margin_end(margin)
+    box.append(child)
+    clamp = Adw.Clamp()
+    clamp.set_maximum_size(width)
+    clamp.set_tightening_threshold(max(320, width - 180))
+    clamp.set_child(box)
+    return clamp
 
 
 def fmt_duration(sec: int) -> str:
@@ -380,6 +411,7 @@ class ControllerCard(Adw.ExpanderRow):
             rename_btn.connect("clicked", self._on_rename)
             self.info_row.add_suffix(rename_btn)
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.add_css_class("btn-icon")
         copy_btn.set_tooltip_text(_("Copiar informações do controle"))
         a11y_label(copy_btn, _("Copiar informações do controle"))
         copy_btn.add_css_class("btn-icon")
@@ -403,6 +435,7 @@ class ControllerCard(Adw.ExpanderRow):
         bat_box.append(self.bat_label)
         self.battery_native = ""
         hist_btn = Gtk.Button.new_from_icon_name("document-open-recent-symbolic")
+        hist_btn.add_css_class("btn-icon")
         hist_btn.set_tooltip_text(_("Histórico de bateria"))
         a11y_label(hist_btn, _("Histórico de bateria"))
         hist_btn.add_css_class("btn-icon")
@@ -472,7 +505,7 @@ class ControllerCard(Adw.ExpanderRow):
             self.add_row(off_row)
 
         # --- vibração (teste dos dois motores separadamente) ---
-        vib_btn = Gtk.Button(label=_("Vibrar"), icon_name="audio-volume-high-symbolic")
+        vib_btn = Gtk.Button(label=_("Vibrar"))
         vib_btn.add_css_class("btn-std")
         vib_btn.set_valign(Gtk.Align.CENTER)
         vib_btn.connect("clicked", self._on_vibrate)
@@ -668,8 +701,8 @@ class TesterWindow(Adw.Window):
     """Testador de botões: desenho do controle Xbox com destaque ao vivo via evdev."""
 
     def __init__(self, parent: Gtk.Window, initial_path: str | None = None):
-        super().__init__(transient_for=parent, title=_("Testar botões"))
-        self.set_default_size(580, 520)
+        super().__init__(transient_for=parent, title=_("Testar controle"))
+        self.set_default_size(680, 640)
         self._dev = None
         self._limits: dict[int, tuple[int, int]] = {}
         self._state = inputs.new_state()
@@ -678,15 +711,16 @@ class TesterWindow(Adw.Window):
         self._raw: deque[str] = deque(maxlen=14)
         self._prefs = prefs.get_prefs()
 
-        header = Adw.HeaderBar()
-        header.set_title_widget(Adw.WindowTitle(title=_("Testar botões"),
-                                                subtitle=_("aperte os botões do controle")))
+        header = window_header(_("Testar controle"),
+                               _("aperte os botões do controle"))
         reload_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
+        reload_btn.add_css_class("btn-icon")
         reload_btn.set_tooltip_text(_("Procurar gamepads novamente"))
         a11y_label(reload_btn, _("Procurar gamepads novamente"))
         reload_btn.connect("clicked", lambda *_a: self._reload_devices(None))
         header.pack_start(reload_btn)
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.add_css_class("btn-icon")
         copy_btn.set_tooltip_text(_("Copiar estado atual"))
         a11y_label(copy_btn, _("Copiar estado atual"))
         copy_btn.connect("clicked", self._on_copy_state)
@@ -694,10 +728,10 @@ class TesterWindow(Adw.Window):
 
         self.dev_list = Gtk.StringList()
         self.dropdown = Gtk.DropDown(model=self.dev_list)
-        self.dropdown.set_tooltip_text(_("Gamepad evdev"))
+        self.dropdown.set_tooltip_text(_("Dispositivo de entrada"))
         self._loading_devices = False
         self.dropdown.connect("notify::selected", self._on_device_selected)
-        dev_row = Adw.ActionRow(title=_("Gamepad"))
+        dev_row = Adw.ActionRow(title=_("Controle"))
         dev_row.add_suffix(self.dropdown)
         dev_row.set_activatable(False)
 
@@ -724,12 +758,10 @@ class TesterWindow(Adw.Window):
         self.axis_label.add_css_class("dim")
         self.axis_label.set_wrap(True)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        content.set_margin_top(12)
-        content.set_margin_bottom(12)
-        content.set_margin_start(12)
-        content.set_margin_end(12)
-        content.append(dev_row)
+        settings_group = Adw.PreferencesGroup(
+            title=_("Leitura"),
+            description=_("Escolha o controle e ajuste a zona morta"))
+        settings_group.add(dev_row)
         # zona morta dos analógicos (só afeta o testador)
         self.dz_scale = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, 0.0, 0.5, 0.01)
@@ -743,15 +775,21 @@ class TesterWindow(Adw.Window):
                                subtitle=_("vale só para o desenho do testador"))
         dz_row.add_suffix(self.dz_scale)
         dz_row.set_activatable(False)
-        content.append(dz_row)
-        content.append(self.area)
-        content.append(self.status_label)
-        content.append(self.axis_label)
+        settings_group.add(dz_row)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content.append(settings_group)
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        panel.add_css_class("panel")
+        panel.append(self.area)
+        panel.append(self.status_label)
+        panel.append(self.axis_label)
         self.raw_label = Gtk.Label(label=_("eventos evdev aparecem aqui"))
         self.raw_label.add_css_class("dim")
         self.raw_label.set_wrap(True)
         self.raw_label.set_selectable(True)
-        content.append(self.raw_label)
+        panel.append(self.raw_label)
+        content.append(panel)
         # mapeamento evdev → botão (referência estática)
         try:
             from evdev import ecodes as _ec
@@ -767,7 +805,9 @@ class TesterWindow(Adw.Window):
                                      subtitle=str(_rev.get(_code, _code)))
                 _row.set_activatable(False)
                 map_exp.add_row(_row)
-            content.append(map_exp)
+            map_group = Adw.PreferencesGroup(title=_("Referência evdev"))
+            map_group.add(map_exp)
+            content.append(map_group)
         except ImportError:
             pass
         hint = Gtk.Label(label=_("Dica: o dispositivo virtual “X-Box 360 pad” espelha o real — teste no “Microsoft Xbox Controller”."))
@@ -777,7 +817,9 @@ class TesterWindow(Adw.Window):
 
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         body.append(header)
-        body.append(content)
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_child(content_clamp(content, 760))
+        body.append(scrolled)
         self.set_content(body)
         self.connect("close-request", self._on_close)
 
@@ -1194,14 +1236,13 @@ class BatteryHistoryWindow(Adw.Window):
     def __init__(self, parent: Gtk.Window, native_path: str, device: str):
         super().__init__(transient_for=parent,
                          title=_("Histórico de bateria"))
-        self.set_default_size(620, 420)
+        self.set_default_size(680, 500)
         self.native_path = native_path
         self.device = device
         self.rows = history.get_history(native_path, hours=24)
-        header = Adw.HeaderBar()
-        header.set_title_widget(Adw.WindowTitle(
-            title=_("Histórico de bateria"), subtitle=device))
+        header = window_header(_("Histórico de bateria"), device)
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.add_css_class("btn-icon")
         copy_btn.set_tooltip_text(_("Copiar resumo"))
         copy_btn.connect("clicked", self._on_copy)
         header.pack_end(copy_btn)
@@ -1227,16 +1268,13 @@ class BatteryHistoryWindow(Adw.Window):
         else:
             self.summary.set_text(_("sem histórico do UPower"))
         self.summary.add_css_class("dim")
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        content.set_margin_top(12)
-        content.set_margin_bottom(12)
-        content.set_margin_start(12)
-        content.set_margin_end(12)
-        content.append(self.area)
-        content.append(self.summary)
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        panel.add_css_class("panel")
+        panel.append(self.area)
+        panel.append(self.summary)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         body.append(header)
-        body.append(content)
+        body.append(content_clamp(panel, 680))
         self.set_content(body)
 
     def _on_copy(self, _b):
@@ -1257,14 +1295,23 @@ class BatteryHistoryWindow(Adw.Window):
             FR, FG, FB = fg.red, fg.green, fg.blue
         except Exception:  # noqa: BLE001
             FR, FG, FB = 0.6, 0.6, 0.6
-        cr.set_source_rgb(FR, FG, FB)
+        cr.set_source_rgba(FR, FG, FB, 0.35)
         cr.set_line_width(1.0)
-        cr.rectangle(24, 16, max(10, w - 48), max(10, h - 48))
+        x, y = 24, 16
+        bw, bh, br = max(10, w - 48), max(10, h - 48), 12
+        cr.new_path()
+        cr.move_to(x + br, y)
+        cr.line_to(x + bw - br, y)
+        cr.arc(x + bw - br, y + br, br, -math.pi / 2, 0)
+        cr.line_to(x + bw, y + bh - br)
+        cr.arc(x + bw - br, y + bh - br, br, 0, math.pi / 2)
+        cr.line_to(x + br, y + bh)
+        cr.arc(x + br, y + bh - br, br, math.pi / 2, math.pi)
+        cr.line_to(x, y + br)
+        cr.arc(x + br, y + br, br, math.pi, math.pi * 1.5)
+        cr.close_path()
         cr.stroke()
         if not self.rows:
-            cr.set_font_size(13)
-            cr.move_to(32, h / 2)
-            cr.show_text(_("sem histórico do UPower"))
             return
         vals = [max(0.0, min(100.0, r["value"])) for r in self.rows]
         n = len(vals)
@@ -1311,10 +1358,9 @@ class MainWindow(Adw.ApplicationWindow):
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         # ---- header ----
-        header = Adw.HeaderBar()
-        header.set_title_widget(Adw.WindowTitle(
-            title="Xbox Wireless", subtitle=_("Central de controle")))
+        header = window_header("Xbox Wireless", _("Central de controle"))
         menu = Gtk.MenuButton(icon_name="open-menu-symbolic")
+        menu.add_css_class("btn-icon")
         a11y_label(menu, _("Menu"))
         pop = Gio.Menu()
         pop.append(_("Diagnóstico"), "app.diagnostics")
@@ -1322,6 +1368,7 @@ class MainWindow(Adw.ApplicationWindow):
         menu.set_menu_model(pop)
         header.pack_end(menu)
         self.refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
+        self.refresh_btn.add_css_class("btn-icon")
         self.refresh_btn.set_tooltip_text(_("Atualizar"))
         a11y_label(self.refresh_btn, _("Atualizar"))
         self.refresh_btn.add_css_class("btn-icon")
@@ -1701,10 +1748,10 @@ class MainWindow(Adw.ApplicationWindow):
         settings_page.add(g_sys)
 
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        content.set_margin_top(18)
+        content.set_margin_top(WINDOW_MARGIN)
         content.set_margin_bottom(24)
-        content.set_margin_start(18)
-        content.set_margin_end(18)
+        content.set_margin_start(WINDOW_MARGIN)
+        content.set_margin_end(WINDOW_MARGIN)
         content.append(self._build_hero())
 
         stack = Adw.ViewStack()
@@ -1726,7 +1773,7 @@ class MainWindow(Adw.ApplicationWindow):
         content.append(stack)
 
         clamp = Adw.Clamp()
-        clamp.set_maximum_size(860)
+        clamp.set_maximum_size(CONTENT_WIDTH)
         clamp.set_tightening_threshold(680)
         clamp.set_child(content)
 
@@ -2198,9 +2245,10 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _show_text_window(self, title: str, text: str):
         win = Adw.Window(transient_for=self, title=title)
-        win.set_default_size(720, 560)
-        header = Adw.HeaderBar()
+        win.set_default_size(780, 620)
+        header = window_header(title, _("conteúdo copiável"))
         copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.add_css_class("btn-icon")
         copy_btn.set_tooltip_text(_("Copiar"))
         a11y_label(copy_btn, _("Copiar"))
         copy_btn.connect("clicked", lambda _b: self.copy_text(text))
@@ -2208,12 +2256,19 @@ class MainWindow(Adw.ApplicationWindow):
         view = Gtk.TextView()
         view.set_editable(False)
         view.set_monospace(True)
+        view.set_left_margin(10)
+        view.set_right_margin(10)
+        view.set_top_margin(8)
+        view.set_bottom_margin(8)
         view.get_buffer().set_text(text)
         scrolled = Gtk.ScrolledWindow(vexpand=True)
         scrolled.set_child(view)
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        panel.add_css_class("panel")
+        panel.append(scrolled)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         body.append(header)
-        body.append(scrolled)
+        body.append(content_clamp(panel, 820))
         win.set_content(body)
         win.present()
         return False
@@ -2276,22 +2331,26 @@ class MainWindow(Adw.ApplicationWindow):
                          "Pareie pelo bluetoothctl/Configurações."))
             return False
         win = Adw.Window(transient_for=self, title=_("Controles pareados"))
-        win.set_default_size(520, 380)
-        header = Adw.HeaderBar()
+        win.set_default_size(600, 460)
+        header = window_header(_("Controles pareados"),
+                               _("BlueZ / xpadneo"))
         page = Adw.PreferencesPage()
-        group = Adw.PreferencesGroup(title=_("Pareados no BlueZ"))
+        group = Adw.PreferencesGroup(
+            title=_("Pareados no BlueZ"),
+            description=_("Selecione um controle para conectar"))
         for d in devices:
             row = Adw.ActionRow(title=d["name"], subtitle=d["mac"])
             conn = Gtk.Button(label=_("Conectar"))
             conn.add_css_class("btn-std")
+            conn.set_valign(Gtk.Align.CENTER)
             conn.connect("clicked", lambda _b, mac=d["mac"]: self._bt_connect(mac))
             row.add_suffix(conn)
             group.add(row)
         page.add(group)
-        scrolled = Gtk.ScrolledWindow(vexpand=True)
-        scrolled.set_child(page)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         body.append(header)
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_child(content_clamp(page, 640))
         body.append(scrolled)
         win.set_content(body)
         win.present()
@@ -2345,6 +2404,7 @@ class MainWindow(Adw.ApplicationWindow):
                     subtitle=f"{kind} • {name}")
                 default_btn = Gtk.Button(label=_("Padrão"))
                 default_btn.add_css_class("btn-std")
+                default_btn.set_valign(Gtk.Align.CENTER)
                 default_btn.connect(
                     "clicked",
                     lambda _b, k=kind, n=name: self._audio_default(k, n))
@@ -3015,6 +3075,7 @@ class MainWindow(Adw.ApplicationWindow):
             suffix.append(bar)
             suffix.append(pct_lbl)
             hist = Gtk.Button.new_from_icon_name("document-open-recent-symbolic")
+            hist.add_css_class("btn-icon")
             hist.set_tooltip_text(_("Histórico de bateria"))
             a11y_label(hist, _("Histórico de bateria"))
             hist.add_css_class("btn-icon")

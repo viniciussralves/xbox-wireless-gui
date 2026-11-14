@@ -289,6 +289,16 @@ class MainNewCase(unittest.TestCase):
         card.set_battery_info({"percentage": -1, "state": "x"})
         card.set_battery(50, "y")
 
+    def test_design_helpers(self):
+        header = main.window_header("Título", "Subtítulo")
+        title = header.get_title_widget()
+        self.assertEqual(title.get_title(), "Título")
+        self.assertEqual(title.get_subtitle(), "Subtítulo")
+        clamp = main.content_clamp(main.Gtk.Label(label="x"), 500)
+        self.assertIsInstance(clamp, main.Adw.Clamp)
+        self.assertEqual(clamp.get_maximum_size(), 500)
+        self.assertIn(b".panel", main.CSS)
+
     def test_tabs_and_notification_bar(self):
         w = self._win()
         self.assertEqual(len(w.tab_stack.get_pages()), 4)
