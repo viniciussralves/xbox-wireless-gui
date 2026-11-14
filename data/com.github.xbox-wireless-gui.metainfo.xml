@@ -33,6 +33,10 @@
       <caption>Barra de notificação detalhada com ação e fechamento</caption>
       <image>https://raw.githubusercontent.com/viniciussralves/xbox-wireless-gui/main/data/screenshots/notification-bar.png</image>
     </screenshot>
+    <screenshot>
+      <caption>Testador de controles com leitura ao vivo</caption>
+      <image>https://raw.githubusercontent.com/viniciussralves/xbox-wireless-gui/main/data/screenshots/tester.png</image>
+    </screenshot>
   </screenshots>
   <developer id="com.github.viniciussralves">
     <name>theone</name>

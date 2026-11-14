@@ -22,7 +22,9 @@ inspirado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Integração com input-remapper na interface.
 - Empacotamento Debian e AUR; unidades systemd, política D-Bus e
   serviço de ativação por D-Bus.
-- Testes para os novos módulos e fluxos (247 testes).
+- Design system consistente: headers, margens, painéis, botões, ícones e
+  janelas secundárias padronizados; testador e histórico no mesmo estilo.
+- Testes para os novos módulos e fluxos (248 testes).
 
 ### Corrigido
 - Caminhos/interface D-Bus válidos (sem hífen em object path/interface).

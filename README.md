@@ -16,7 +16,7 @@ Empacotamento alvo: **Fedora (RPM/COPR)**.
 ## Estado atual (testado em Fedora 44 KDE)
 - `xone_dongle` + dongle `045e:02e6` detectados, `pairing=0`, controle conectado.
 - GTK4 + Libadwaita + UPowerGlib OK. `python3-evdev`, `evtest` instalados via dnf.
-- Suite com 247 testes, cobertura de linha ≥95% em `src/`.
+- Suite com 248 testes, cobertura de linha ≥95% em `src/`.
 
 ## Uso (dev)
 ```sh
@@ -147,6 +147,13 @@ sudo dnf install xbox-wireless-gui
 - O helper D-Bus dedicado é ativado por D-Bus; se ele não estiver disponível,
   o app cai no fluxo antigo via `pkexec`. Para habilitar no systemd:
   `sudo systemctl enable --now com.github.xbox-wireless-gui.helper.service`.
+
+## Design
+- Margens de 18 px e largura máxima de conteúdo de 860 px.
+- Headers com `WindowTitle` + subtítulo em todas as janelas.
+- Botões de texto usam `btn-std`; botões de ícone usam `btn-icon` e rótulo acessível.
+- Painéis, chips, notificações e estados vazios usam as mesmas bordas, raios e cores do tema.
+- Abas Início/Controles/Áudio/Configurações mantêm o mesmo ritmo visual.
 
 ## Desenvolvimento
 ```sh
